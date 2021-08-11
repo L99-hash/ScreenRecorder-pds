@@ -50,10 +50,29 @@ extern "C"
 }
 
 class ScreenRecorder {
+    AVInputFormat* pAVInputFormat;
+    AVFormatContext* pAVFormatContext;
+    AVDictionary* options;
+    AVCodecContext* pAVCodecContext;
+    AVCodec* pAVCodec;
+    AVFormatContext* outAVFormatContext;
+    const char* outputFile;
+    AVOutputFormat* outputFormat;
+    AVStream* videoSt;
+    AVCodecContext* outAVCodecContext;
+    AVCodec* outAVCodec;
 
+    int value;   //used for checking values returned from various functions
+    int codec_id;
+    int out_size;
+    int VideoStreamIndx;
+    double video_pts;
+    const char* dev_name;
 public:
     ScreenRecorder();
-
+    ~ScreenRecorder();
+    int openCamera();
+    int initOutputFile();
 };
 
 
