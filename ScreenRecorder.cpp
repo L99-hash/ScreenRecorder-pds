@@ -21,15 +21,49 @@ int ScreenRecorder::openCamera() {
     pAVFormatContext = nullptr;
 
     pAVFormatContext = avformat_alloc_context();
-
+#ifdef _WIN32
+    AVDictionary* opt = nullptr;
+    pAVInputFormat = av_find_input_format("gdigrab");
+    //Set some options
+    //grabbing frame rate
+    //av_dict_set(&options,"framerate","5",0);
+    //The distance from the left edge of the screen or desktop
+    //av_dict_set(&options,"offset_x","20",0);
+    //The distance from the top edge of the screen or desktop
+    //av_dict_set(&options,"offset_y","40",0);
+    //Video frame size. The default is to capture the full screen
+    //av_dict_set(&options,"video_size","640x480",0);
+    if(avformat_open_input(&pAVFormatContext, "desktop", pAVInputFormat, &opt)!=0){
+        cerr << "Couldn't open input stream" << endl;
+        exit(-1);
+    }
+#elif defined linux
+    AVDictionary* opt = nullptr;
     //permits to set the capturing from screen
+    //Set some options
+    //grabbing frame rate
+    //av_dict_set(&options,"framerate","5",0);
+    //Make the grabbed area follow the mouse
+    //av_dict_set(&options,"follow_mouse","centered",0);
+    //Video frame size. The default is to capture the full screen
+    //av_dict_set(&options,"video_size","640x480",0);
     pAVInputFormat = av_find_input_format("x11grab");
-    value = avformat_open_input(&pAVFormatContext, ":0.0+10,250", pAVInputFormat, nullptr);
+    value = avformat_open_input(&pAVFormatContext, ":0.0+10,250", pAVInputFormat, &opt);
 
     if(value !=0 ){
         cerr << "Error in opening input device" << endl;
         exit(-1);
     }
+#else
+
+    show_avfoundation_device();
+    pAVInputFormat = av_find_input_format("avfoundation");
+    if(avformat_open_input(&pAVFormatContext, "1", pAVInputFormat, nullptr)!=0){
+        cerr << "Error in opening input device" << endl;
+        exit(-1);
+    }
+
+#endif
 
     //set frame per second
     value = av_dict_set(&options, "framerate", "30", 0);
