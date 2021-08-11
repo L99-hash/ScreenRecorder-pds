@@ -1,3 +1,0 @@
-/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/cmake-build-debug/CMakeFiles/ScreenRecorder_pds.dir
