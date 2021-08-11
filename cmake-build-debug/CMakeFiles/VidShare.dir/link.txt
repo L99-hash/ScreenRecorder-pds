@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/VidShare.dir/main.cpp.o -o VidShare  /usr/lib/x86_64-linux-gnu/libavformat.so /usr/lib/x86_64-linux-gnu/libavcodec.so 

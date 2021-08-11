@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/ScreenRecorder_pds.dir/ScreenRecorder.cpp.o"
   "CMakeFiles/ScreenRecorder_pds.dir/main.cpp.o"
   "ScreenRecorder_pds"
   "ScreenRecorder_pds.pdb"

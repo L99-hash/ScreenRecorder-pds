@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = 
+CXX_INCLUDES = -I/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/dep/ffmpeg/include
 
 CXX_FLAGS = -g -std=gnu++2a
 

@@ -8,13 +8,13 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/ScreenRecorder.cpp" "/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/cmake-build-debug/CMakeFiles/ScreenRecorder_pds.dir/ScreenRecorder.cpp.o"
-  "/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/main.cpp" "/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/cmake-build-debug/CMakeFiles/ScreenRecorder_pds.dir/main.cpp.o"
+  "/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/main.cpp" "/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/cmake-build-debug/CMakeFiles/VidShare.dir/main.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
+  "../dep/ffmpeg/include"
   )
 
 # The set of dependency files which are needed:

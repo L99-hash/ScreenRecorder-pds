@@ -82,6 +82,12 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/ScreenRecorder.cpp">
+			<Option target="ScreenRecorder_pds"/>
+		</Unit>
+		<Unit filename="/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/ScreenRecorder.h">
+			<Option target="ScreenRecorder_pds"/>
+		</Unit>
 		<Unit filename="/home/enrico/Documents/polito/programmazione_di_sistema/ScreenRecorder-pds/main.cpp">
 			<Option target="ScreenRecorder_pds"/>
 		</Unit>
