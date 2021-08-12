@@ -254,7 +254,11 @@ int ScreenRecorder::captureVideoFrames() {
     }
 
     SwsContext* swsCtx_;
-
+    if(avcodec_open2(pAVCodecContext, pAVCodec,NULL)<0)
+    {
+        printf("Could not open codec.\n");
+        return -1;
+    }
     swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outAVCodecContext->width, outAVCodecContext->height, outAVCodecContext->pix_fmt, SWS_BICUBIC,
                              nullptr, nullptr, nullptr);
     int ii=0;
