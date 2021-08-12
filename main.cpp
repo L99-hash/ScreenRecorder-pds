@@ -4,7 +4,7 @@
 int main() {
     ScreenRecorder screenRecorder;
 
-    screenRecorder.openCamera();
+    screenRecorder.openDevice();
     screenRecorder.initOutputFile();
     screenRecorder.captureVideoFrames();
     return 0;

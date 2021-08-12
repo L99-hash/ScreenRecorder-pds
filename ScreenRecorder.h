@@ -74,7 +74,7 @@ class ScreenRecorder {
 public:
     ScreenRecorder();
     ~ScreenRecorder();
-    int openCamera();
+    int openDevice();
     int initOutputFile();
     int captureVideoFrames();
 };

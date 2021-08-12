@@ -40,7 +40,7 @@ ScreenRecorder::~ScreenRecorder() {
     }
 }
 
-int ScreenRecorder::openCamera() {
+int ScreenRecorder::openDevice() {
     value = 0;
     options = nullptr;
     pAVFormatContext = nullptr;
@@ -71,9 +71,9 @@ int ScreenRecorder::openCamera() {
     //Make the grabbed area follow the mouse
     //av_dict_set(&options,"follow_mouse","centered",0);
     //Video frame size. The default is to capture the full screen
-    //av_dict_set(&options,"video_size","640x480",0);
+    //av_dict_set(&options,"video_size","320x240",0);
     pAVInputFormat = av_find_input_format("x11grab");
-    value = avformat_open_input(&pAVFormatContext, ":0.0+10,250", pAVInputFormat, &opt);
+    value = avformat_open_input(&pAVFormatContext, ":0.0+0,0", pAVInputFormat, &opt);
 
     if(value !=0 ){
         cerr << "Error in opening input device" << endl;
@@ -125,6 +125,13 @@ int ScreenRecorder::openCamera() {
         exit(-3);
     }
 
+    /*int h, w;
+    cout << "Insert height and width [h w]: ";   //custom screen dimension to record
+    cin >> h >> w;
+
+    pAVCodecContext->height = h;
+    pAVCodecContext->width = w;*/
+
     return 0;
 }
 
@@ -164,7 +171,7 @@ int ScreenRecorder::initOutputFile() {
     outAVCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
     outAVCodecContext->pix_fmt  = AV_PIX_FMT_YUV420P;
     outAVCodecContext->bit_rate = 400000; // 2500000
-    outAVCodecContext->width = 1920;
+    outAVCodecContext->width = 1920;   //dimension of the output video file
     outAVCodecContext->height = 1080;
     outAVCodecContext->gop_size = 3;
     outAVCodecContext->max_b_frames = 2;
@@ -254,10 +261,9 @@ int ScreenRecorder::captureVideoFrames() {
     }
 
     SwsContext* swsCtx_;
-    if(avcodec_open2(pAVCodecContext, pAVCodec,NULL)<0)
-    {
-        printf("Could not open codec.\n");
-        return -1;
+    if(avcodec_open2(pAVCodecContext, pAVCodec, nullptr) < 0) {
+        cerr << "Could not open codec" << endl;
+        exit(-1);
     }
     swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outAVCodecContext->width, outAVCodecContext->height, outAVCodecContext->pix_fmt, SWS_BICUBIC,
                              nullptr, nullptr, nullptr);
