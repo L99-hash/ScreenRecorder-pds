@@ -61,6 +61,9 @@ class ScreenRecorder {
     AVStream* videoSt;
     AVCodecContext* outAVCodecContext;
     AVCodec* outAVCodec;
+    AVPacket* pAVPacket;
+    AVFrame* pAVFrame;
+    AVFrame* outFrame;
 
     int value;   //used for checking values returned from various functions
     int codec_id;
@@ -73,6 +76,7 @@ public:
     ~ScreenRecorder();
     int openCamera();
     int initOutputFile();
+    int captureVideoFrames();
 };
 
 
