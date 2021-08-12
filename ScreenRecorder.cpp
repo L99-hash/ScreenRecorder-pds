@@ -65,7 +65,7 @@ int ScreenRecorder::openDevice() {
 #elif defined linux
     AVDictionary* opt = nullptr;
     int offset_x = 100, offset_y = 100;
-    string url = ":0.0+" + to_string(offset_x) + "," + to_string(offset_y);
+    string url = ":0.0+" + to_string(offset_x) + "," + to_string(offset_y);  //custom string to set the start point of the screen section
     //permits to set the capturing from screen
     //Set some options
     //grabbing frame rate
@@ -75,7 +75,7 @@ int ScreenRecorder::openDevice() {
     //Video frame size. The default is to capture the full screen
     //av_dict_set(&opt, "offset_x", "20", 0);
     //av_dict_set(&opt, "offset_y", "20", 0);
-    av_dict_set(&opt,"video_size","1920x1080",0);
+    av_dict_set(&opt,"video_size","640x480",0);   //option to set the dimension of the screen section to record
     pAVInputFormat = av_find_input_format("x11grab");
     value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &opt);
 
