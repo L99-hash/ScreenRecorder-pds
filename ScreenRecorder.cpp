@@ -64,6 +64,8 @@ int ScreenRecorder::openDevice() {
     }
 #elif defined linux
     AVDictionary* opt = nullptr;
+    int offset_x = 100, offset_y = 100;
+    string url = ":0.0+" + to_string(offset_x) + "," + to_string(offset_y);
     //permits to set the capturing from screen
     //Set some options
     //grabbing frame rate
@@ -71,9 +73,11 @@ int ScreenRecorder::openDevice() {
     //Make the grabbed area follow the mouse
     //av_dict_set(&options,"follow_mouse","centered",0);
     //Video frame size. The default is to capture the full screen
-    //av_dict_set(&options,"video_size","320x240",0);
+    //av_dict_set(&opt, "offset_x", "20", 0);
+    //av_dict_set(&opt, "offset_y", "20", 0);
+    av_dict_set(&opt,"video_size","1920x1080",0);
     pAVInputFormat = av_find_input_format("x11grab");
-    value = avformat_open_input(&pAVFormatContext, ":0.0+0,0", pAVInputFormat, &opt);
+    value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &opt);
 
     if(value !=0 ){
         cerr << "Error in opening input device" << endl;
@@ -127,10 +131,10 @@ int ScreenRecorder::openDevice() {
 
     /*int h, w;
     cout << "Insert height and width [h w]: ";   //custom screen dimension to record
-    cin >> h >> w;
+    cin >> h >> w;*/
 
-    pAVCodecContext->height = h;
-    pAVCodecContext->width = w;*/
+    //pAVCodecContext->height = 1080;
+    //pAVCodecContext->width = 1920;
 
     return 0;
 }
@@ -239,10 +243,12 @@ int ScreenRecorder::captureVideoFrames() {
         cerr << "Error: unable to alloc the AVFrame resources" << endl;
         exit(-1);
     }
+    //pAVFrame->height = 1080;
+    //pAVFrame->width = 1920;
 
     outFrame = av_frame_alloc();
     if(outFrame == nullptr){
-        cerr << "Error: unable to alloc the AVFrame resources for outframe" << endl;
+        cerr << "Error: unable to alloc the AVFrame resources for out frame" << endl;
         exit(-1);
     }
 
