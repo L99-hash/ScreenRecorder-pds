@@ -5,6 +5,15 @@
 #include "ScreenRecorder.h"
 
 using namespace std;
+void show_avfoundation_device(){
+    AVFormatContext *pFormatCtx = avformat_alloc_context();
+    AVDictionary* options = NULL;
+    av_dict_set(&options,"list_devices","true",0);
+    AVInputFormat *iformat = av_find_input_format("avfoundation");
+    printf("==AVFoundation Device Info===\n");
+    avformat_open_input(&pFormatCtx,"",iformat,&options);
+    printf("=============================\n");
+}
 
 ScreenRecorder::ScreenRecorder() {
     avcodec_register_all();
@@ -245,7 +254,11 @@ int ScreenRecorder::captureVideoFrames() {
     }
 
     SwsContext* swsCtx_;
-
+    if(avcodec_open2(pAVCodecContext, pAVCodec,NULL)<0)
+    {
+        printf("Could not open codec.\n");
+        return -1;
+    }
     swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outAVCodecContext->width, outAVCodecContext->height, outAVCodecContext->pix_fmt, SWS_BICUBIC,
                              nullptr, nullptr, nullptr);
     int ii=0;
