@@ -6,5 +6,6 @@ int main() {
 
     screenRecorder.openCamera();
     screenRecorder.initOutputFile();
+    screenRecorder.captureVideoFrames();
     return 0;
 }

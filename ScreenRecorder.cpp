@@ -12,7 +12,23 @@ ScreenRecorder::ScreenRecorder() {
 }
 
 ScreenRecorder::~ScreenRecorder() {
+    avformat_close_input(&pAVFormatContext);
+    if(pAVFormatContext == nullptr){
+        cout << "File close successfully" << endl;
+    }
+    else{
+        cerr << "Error: unable to close the file" << endl;
+        exit(-1);
+    }
 
+    avformat_free_context(pAVFormatContext);
+    if(pAVFormatContext == nullptr){
+        cout << "AVFormat freed successfully" << endl;
+    }
+    else{
+        cerr << "Error: unable to free AVFormatContext" << endl;
+        exit(-1);
+    }
 }
 
 int ScreenRecorder::openCamera() {
@@ -58,7 +74,7 @@ int ScreenRecorder::openCamera() {
 
     show_avfoundation_device();
     pAVInputFormat = av_find_input_format("avfoundation");
-    if(avformat_open_input(&pAVFormatContext, "1", pAVInputFormat, nullptr)!=0){
+    if(avformat_open_input(&pAVFormatContext, "1", pAVInputFormat, nullptr)!=0){  //TODO trovare un modo per selezionare sempre lo schermo
         cerr << "Error in opening input device" << endl;
         exit(-1);
     }
@@ -184,6 +200,110 @@ int ScreenRecorder::initOutputFile() {
         cerr << "Error in writing the header context" << endl;
         exit(-12);
     }
+
+    return 0;
+}
+
+int ScreenRecorder::captureVideoFrames() {
+
+    int flag;
+    int frameFinished;
+
+    int frameIndex = 0;
+    value = 0;
+
+    pAVPacket = (AVPacket *) av_malloc(sizeof(AVPacket));
+    if(pAVPacket == nullptr){
+        cerr << "Error in allocating AVPacket" << endl;
+        exit(-1);
+    }
+
+    pAVFrame = av_frame_alloc();
+    if(pAVFrame == nullptr){
+        cerr << "Error: unable to alloc the AVFrame resources" << endl;
+        exit(-1);
+    }
+
+    outFrame = av_frame_alloc();
+    if(outFrame == nullptr){
+        cerr << "Error: unable to alloc the AVFrame resources for outframe" << endl;
+        exit(-1);
+    }
+
+    int videoOutBuffSize;
+    int nBytes = av_image_get_buffer_size(outAVCodecContext->pix_fmt, outAVCodecContext->width, outAVCodecContext->height, 32);
+    uint8_t* videoOutBuff = (uint8_t *) av_malloc(nBytes);
+
+    if(videoOutBuff == nullptr){
+        cerr << "Error: unable to allocate memory" << endl;
+        exit(-1);
+    }
+
+    value = av_image_fill_arrays(outFrame->data, outFrame->linesize, videoOutBuff, AV_PIX_FMT_YUV420P, outAVCodecContext->width, outAVCodecContext->height, 1);
+    if(value < 0){
+        cerr << "Error in filling image array" << endl;
+    }
+
+    SwsContext* swsCtx_;
+
+    swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outAVCodecContext->width, outAVCodecContext->height, outAVCodecContext->pix_fmt, SWS_BICUBIC,
+                             nullptr, nullptr, nullptr);
+    int ii=0;
+    int noFrames = 100;
+
+    cout << "Enter No frames to capture: ";
+    cin >> noFrames;
+
+    AVPacket outPacket;
+    int j = 0;
+
+    int gotPicture;
+
+    while(av_read_frame(pAVFormatContext, pAVPacket) >= 0){
+        if(ii++ == noFrames)
+            break;
+
+        if(pAVPacket->stream_index == VideoStreamIndx){
+            value = avcodec_decode_video2(pAVCodecContext, pAVFrame, &frameFinished, pAVPacket);
+            if(value < 0){
+                cout << "Unable to decode video" << endl;
+            }
+
+            if(frameFinished) { //frame successfully decoded
+                sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
+                av_init_packet(&outPacket);
+                outPacket.data = nullptr;
+                outPacket.size = 0;
+                avcodec_encode_video2(outAVCodecContext, &outPacket, outFrame, &gotPicture);
+                if(gotPicture){
+                    if(outPacket.pts != AV_NOPTS_VALUE){
+                        outPacket.pts = av_rescale_q(outPacket.pts, videoSt->codec->time_base, videoSt->time_base);
+                    }
+                    if(outPacket.dts != AV_NOPTS_VALUE){
+                        outPacket.dts = av_rescale_q(outPacket.dts, videoSt->codec->time_base, videoSt->time_base);
+                    }
+
+                    cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
+                    if(av_write_frame(outAVFormatContext, &outPacket) != 0){
+                        cerr << "Error in writing video frame" << endl;
+                    }
+
+                    av_packet_unref(&outPacket);
+                }
+
+                av_packet_unref(&outPacket);
+            }
+        }
+    }
+
+    value = av_write_trailer(outAVFormatContext);
+    if(value < 0){
+        cerr << "Error in writing av trailer" << endl;
+        exit(-1);
+    }
+
+    av_free(videoOutBuff);
+
 
     return 0;
 }
