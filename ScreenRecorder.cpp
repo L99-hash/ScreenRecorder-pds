@@ -207,7 +207,7 @@ int ScreenRecorder::initOutputFile() {
 int ScreenRecorder::captureVideoFrames() {
 
     int flag;
-    int frameFinished;
+    int frameFinished = 0;
 
     int frameIndex = 0;
     value = 0;
