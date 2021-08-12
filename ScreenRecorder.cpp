@@ -134,7 +134,7 @@ int ScreenRecorder::initOutputFile() {
         cerr << "Error in creating AVFormatStream" << endl;
         exit(-6);
     }
-    
+
     outAVCodec = nullptr;   //avoid segmentation fault on call avcodec_alloc_context3(outAVCodec)
     outAVCodecContext = avcodec_alloc_context3(outAVCodec);
     if(outAVCodecContext == nullptr){
