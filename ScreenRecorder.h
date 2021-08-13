@@ -12,6 +12,8 @@
 #include <cstring>
 #include <math.h>
 #include <string.h>
+#include <condition_variable>
+#include <mutex>
 
 #define __STDC_CONSTANT_MACROS
 
@@ -56,7 +58,7 @@ class ScreenRecorder {
     AVCodecContext* pAVCodecContext;
     AVCodec* pAVCodec;
     AVFormatContext* outAVFormatContext;
-    const char* outputFile;
+    char* outputFile;
     AVOutputFormat* outputFormat;
     AVStream* videoSt;
     AVCodecContext* outAVCodecContext;
@@ -71,7 +73,14 @@ class ScreenRecorder {
     int VideoStreamIndx;
     double video_pts;
     const char* dev_name;
+
+    int width;
+    int height;
 public:
+    std::condition_variable cv;
+    std::mutex mu;
+    bool stopCapture = false;
+
     ScreenRecorder();
     ~ScreenRecorder();
     int openDevice();

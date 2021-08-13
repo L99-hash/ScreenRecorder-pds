@@ -15,9 +15,12 @@ void show_avfoundation_device(){
     printf("=============================\n");
 }
 
-ScreenRecorder::ScreenRecorder() {
+ScreenRecorder::ScreenRecorder(){
     avcodec_register_all();
     avdevice_register_all();
+
+    width = 640;
+    height = 480;
 }
 
 ScreenRecorder::~ScreenRecorder() {
@@ -63,9 +66,6 @@ int ScreenRecorder::openDevice() {
         exit(-1);
     }
 #elif defined linux
-    AVDictionary* opt = nullptr;
-    int offset_x = 100, offset_y = 100;
-    string url = ":0.0+" + to_string(offset_x) + "," + to_string(offset_y);  //custom string to set the start point of the screen section
     //permits to set the capturing from screen
     //Set some options
     //grabbing frame rate
@@ -75,7 +75,11 @@ int ScreenRecorder::openDevice() {
     //Video frame size. The default is to capture the full screen
     //av_dict_set(&opt, "offset_x", "20", 0);
     //av_dict_set(&opt, "offset_y", "20", 0);
-    av_dict_set(&opt,"video_size","640x480",0);   //option to set the dimension of the screen section to record
+    AVDictionary* opt = nullptr;
+    int offset_x = 100, offset_y = 100;
+    string url = ":0.0+" + to_string(offset_x) + "," + to_string(offset_y);  //custom string to set the start point of the screen section
+    string dimension = to_string(width) + "x" + to_string(height);
+    av_dict_set(&opt,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
     pAVInputFormat = av_find_input_format("x11grab");
     value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &opt);
 
@@ -87,7 +91,7 @@ int ScreenRecorder::openDevice() {
 
     show_avfoundation_device();
     pAVInputFormat = av_find_input_format("avfoundation");
-    if(avformat_open_input(&pAVFormatContext, "1", pAVInputFormat, nullptr)!=0){  //TODO trovare un modo per selezionare sempre lo schermo
+    if(avformat_open_input(&pAVFormatContext, "1", pAVInputFormat, nullptr)!=0){  //TODO trovare un modo per selezionare sempre lo schermo (forse "Capture screen 0")
         cerr << "Error in opening input device" << endl;
         exit(-1);
     }
@@ -175,8 +179,8 @@ int ScreenRecorder::initOutputFile() {
     outAVCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
     outAVCodecContext->pix_fmt  = AV_PIX_FMT_YUV420P;
     outAVCodecContext->bit_rate = 400000; // 2500000
-    outAVCodecContext->width = 1920;   //dimension of the output video file
-    outAVCodecContext->height = 1080;
+    outAVCodecContext->width = width;   //dimension of the output video file
+    outAVCodecContext->height = height;
     outAVCodecContext->gop_size = 3;
     outAVCodecContext->max_b_frames = 2;
     outAVCodecContext->time_base.num = 1;
@@ -276,8 +280,8 @@ int ScreenRecorder::captureVideoFrames() {
     int ii=0;
     int noFrames = 100;
 
-    cout << "Enter No frames to capture: ";
-    cin >> noFrames;
+    //cout << "Enter No frames to capture: ";
+    //cin >> noFrames;
 
     AVPacket outPacket;
     int j = 0;
@@ -285,8 +289,12 @@ int ScreenRecorder::captureVideoFrames() {
     int gotPicture;
 
     while(av_read_frame(pAVFormatContext, pAVPacket) >= 0){
-        if(ii++ == noFrames)
+        unique_lock<mutex> ul(mu);
+        if(stopCapture)
             break;
+        ul.unlock();
+        //if(ii++ == noFrames)
+          //  break;
 
         if(pAVPacket->stream_index == VideoStreamIndx){
             value = avcodec_decode_video2(pAVCodecContext, pAVFrame, &frameFinished, pAVPacket);
@@ -299,6 +307,11 @@ int ScreenRecorder::captureVideoFrames() {
                 av_init_packet(&outPacket);
                 outPacket.data = nullptr;
                 outPacket.size = 0;
+
+                //disable warning on the console
+                outFrame->width = outAVCodecContext->width;
+                outFrame->height = outAVCodecContext->height;
+                outFrame->format = outAVCodecContext->pix_fmt;
                 avcodec_encode_video2(outAVCodecContext, &outPacket, outFrame, &gotPicture);
                 if(gotPicture){
                     if(outPacket.pts != AV_NOPTS_VALUE){
@@ -308,7 +321,7 @@ int ScreenRecorder::captureVideoFrames() {
                         outPacket.dts = av_rescale_q(outPacket.dts, videoSt->codec->time_base, videoSt->time_base);
                     }
 
-                    cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
+                    //cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
                     if(av_write_frame(outAVFormatContext, &outPacket) != 0){
                         cerr << "Error in writing video frame" << endl;
                     }
