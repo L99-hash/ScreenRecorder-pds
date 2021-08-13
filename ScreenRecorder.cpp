@@ -15,15 +15,15 @@ void show_avfoundation_device(){
     printf("=============================\n");
 }
 
-ScreenRecorder::ScreenRecorder(){
+ScreenRecorder::ScreenRecorder(): stopCapture(false) , pauseCapture(false){
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 640;
-    height = 480;
+    width = 1920;
+    height = 1104;
 }
 
-ScreenRecorder::~ScreenRecorder() {
+ScreenRecorder::~ScreenRecorder(){
     avformat_close_input(&pAVFormatContext);
     if(pAVFormatContext == nullptr){
         cout << "File close successfully" << endl;
@@ -76,7 +76,7 @@ int ScreenRecorder::openDevice() {
     //av_dict_set(&opt, "offset_x", "20", 0);
     //av_dict_set(&opt, "offset_y", "20", 0);
     AVDictionary* opt = nullptr;
-    int offset_x = 100, offset_y = 100;
+    int offset_x = 0, offset_y = 0;
     string url = ":0.0+" + to_string(offset_x) + "," + to_string(offset_y);  //custom string to set the start point of the screen section
     string dimension = to_string(width) + "x" + to_string(height);
     av_dict_set(&opt,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
@@ -290,11 +290,18 @@ int ScreenRecorder::captureVideoFrames() {
 
     while(av_read_frame(pAVFormatContext, pAVPacket) >= 0){
         unique_lock<mutex> ul(mu);
-        if(stopCapture)
-            break;
-        ul.unlock();
+        //ul.unlock();
         //if(ii++ == noFrames)
           //  break;
+
+        //ul.lock();
+        if(pauseCapture) cout << "Pause" << endl;
+        cv.wait(ul, [this](){ return !pauseCapture;});   //pause capture (not busy waiting)
+
+        if(stopCapture)  //check if the capture has to stop
+            break;
+
+        ul.unlock();
 
         if(pAVPacket->stream_index == VideoStreamIndx){
             value = avcodec_decode_video2(pAVCodecContext, pAVFrame, &frameFinished, pAVPacket);

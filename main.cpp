@@ -2,8 +2,8 @@
 #include "ScreenRecorder.h"
 #include <thread>
 
-enum Command {stop, start};
-std::string commands[10] = {"stop", "start"};
+enum Command {stop, start, pause, resume};
+std::string commands[10] = {"stop", "start", "pause", "resume"};
 
 Command stringToInt(std::string cmd){
     for(int i=0; i<commands->length(); i++)
@@ -15,6 +15,23 @@ Command stringToInt(std::string cmd){
 void stopCommand(ScreenRecorder &sr){
     std::unique_lock<std::mutex> ul(sr.mu);
     sr.stopCapture = true;
+    if(sr.pauseCapture)
+        sr.pauseCapture = false;
+    sr.cv.notify_one();
+}
+
+void pauseCommand(ScreenRecorder &sr){
+    std::unique_lock<std::mutex> ul(sr.mu);
+    if(!sr.pauseCapture)
+        sr.pauseCapture = true;
+}
+
+void resumeCommand(ScreenRecorder &sr){
+    std::unique_lock<std::mutex> ul(sr.mu);
+    if(sr.pauseCapture){
+        sr.pauseCapture = false;
+        sr.cv.notify_one();
+    }
 }
 
 int main() {
@@ -44,6 +61,12 @@ int main() {
                     screenRecorder.initOutputFile();
                     screenRecorder.captureVideoFrames();
                 } });
+                break;
+            case pause:
+                pauseCommand(screenRecorder);
+                break;
+            case resume:
+                resumeCommand(screenRecorder);
                 break;
            default:
                std::cout << "Command: " << cmd << " does not exist" << std::endl;
