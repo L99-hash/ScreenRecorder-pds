@@ -19,8 +19,8 @@ ScreenRecorder::ScreenRecorder(): stopCapture(false) , pauseCapture(false){
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 1920;
-    height = 1104;
+    width = 1920; //640;
+    height = 1104; //480;
 }
 
 ScreenRecorder::~ScreenRecorder(){
@@ -178,7 +178,7 @@ int ScreenRecorder::initOutputFile() {
     outAVCodecContext->codec_id = AV_CODEC_ID_MPEG4;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
     outAVCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
     outAVCodecContext->pix_fmt  = AV_PIX_FMT_YUV420P;
-    outAVCodecContext->bit_rate = 400000; // 2500000
+    outAVCodecContext->bit_rate = 10000000; // 2500000
     outAVCodecContext->width = width;   //dimension of the output video file
     outAVCodecContext->height = height;
     outAVCodecContext->gop_size = 3;
@@ -319,6 +319,7 @@ int ScreenRecorder::captureVideoFrames() {
                 outFrame->width = outAVCodecContext->width;
                 outFrame->height = outAVCodecContext->height;
                 outFrame->format = outAVCodecContext->pix_fmt;
+
                 avcodec_encode_video2(outAVCodecContext, &outPacket, outFrame, &gotPicture);
                 if(gotPicture){
                     if(outPacket.pts != AV_NOPTS_VALUE){
