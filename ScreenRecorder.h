@@ -67,10 +67,15 @@ class ScreenRecorder {
     AVFrame* pAVFrame;
     AVFrame* outFrame;
 
+    AVInputFormat* audioInputFormat;
+    AVFormatContext* audioFormatContext;
+
+
     int value;   //used for checking values returned from various functions
     int codec_id;
     int out_size;
     int VideoStreamIndx;
+    int AudioStreamIndx;
     double video_pts;
     const char* dev_name;
 
@@ -84,7 +89,7 @@ public:
 
     ScreenRecorder();
     ~ScreenRecorder();
-    int openDevice();
+    int openDevice() throw();
     int initOutputFile();
     int captureVideoFrames();
 };

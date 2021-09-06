@@ -40,8 +40,14 @@ int main() {
     bool started = false;
 
     ScreenRecorder screenRecorder;
+    try{
+        screenRecorder.openDevice();
+    }
+    catch (std::exception& e){
+        std::cout << e.what() << std::endl;
+        exit(-1);
+    }
 
-    screenRecorder.openDevice();
     std::thread t;
 
     while(!endWhile){

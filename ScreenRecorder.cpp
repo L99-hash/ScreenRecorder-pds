@@ -3,8 +3,20 @@
 //
 
 #include "ScreenRecorder.h"
+#include <exception>
 
 using namespace std;
+
+class error : exception {
+private:
+    const char *desc;
+public:
+    error(const char * description): desc(description){}
+    const char* what() const noexcept {
+        return desc;
+    }
+};
+
 void show_avfoundation_device(){
     AVFormatContext *pFormatCtx = avformat_alloc_context();
     AVDictionary* options = NULL;
@@ -31,6 +43,7 @@ ScreenRecorder::~ScreenRecorder(){
     else{
         cerr << "Error: unable to close the file" << endl;
         exit(-1);
+        //throw "Error: unable to close the file";
     }
 
     avformat_free_context(pAVFormatContext);
@@ -43,12 +56,14 @@ ScreenRecorder::~ScreenRecorder(){
     }
 }
 
-int ScreenRecorder::openDevice() {
+int ScreenRecorder::openDevice() throw(){
     value = 0;
     options = nullptr;
     pAVFormatContext = nullptr;
+    audioFormatContext = nullptr;
 
     pAVFormatContext = avformat_alloc_context();
+    audioFormatContext = avformat_alloc_context();
 #ifdef _WIN32
     AVDictionary* opt = nullptr;
     pAVInputFormat = av_find_input_format("gdigrab");
@@ -83,9 +98,13 @@ int ScreenRecorder::openDevice() {
     pAVInputFormat = av_find_input_format("x11grab");
     value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &opt);
 
+    audioInputFormat = av_find_input_format("alsa");
+    value = avformat_open_input(&audioFormatContext, "hw:0", audioInputFormat, nullptr);
+
     if(value !=0 ){
-        cerr << "Error in opening input device" << endl;
-        exit(-1);
+        //cerr << "Error in opening input device" << endl;
+        //exit(-1);
+        throw error("Error in opening input device");
     }
 #else
 
@@ -112,16 +131,23 @@ int ScreenRecorder::openDevice() {
     }
 
     VideoStreamIndx = -1;
+    AudioStreamIndx = -1;
 
     for(int i=0; i<pAVFormatContext->nb_streams; i++){
         if(pAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO){
             VideoStreamIndx = i;
-            break;
+        }
+        else if(audioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO){
+            AudioStreamIndx = i;
         }
     }
 
     if(VideoStreamIndx == -1){
-        cerr << "Error: unable to find stream index" << endl;
+        cerr << "Error: unable to find video stream index" << endl;
+        exit(-2);
+    }
+    if(AudioStreamIndx == -1){
+        cerr << "Error: unable to find audio stream index" << endl;
         exit(-2);
     }
 
@@ -181,10 +207,12 @@ int ScreenRecorder::initOutputFile() {
     outAVCodecContext->bit_rate = 10000000; // 2500000
     outAVCodecContext->width = width;   //dimension of the output video file
     outAVCodecContext->height = height;
-    outAVCodecContext->gop_size = 3;
+    outAVCodecContext->gop_size = 10;     // 3
+    outAVCodecContext->global_quality = 500;
     outAVCodecContext->max_b_frames = 2;
     outAVCodecContext->time_base.num = 1;
     outAVCodecContext->time_base.den = 30; // 15fps
+    outAVCodecContext->bit_rate_tolerance = 400000;
 
     if(codec_id == AV_CODEC_ID_H264){
         av_opt_set(outAVCodecContext->priv_data, "preset", "slow", 0);
