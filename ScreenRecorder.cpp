@@ -368,6 +368,7 @@ int ScreenRecorder::captureVideoFrames() {
                 }
 
                 av_packet_unref(&outPacket);
+                av_free_packet(pAVPacket);
             }
         }
     }
