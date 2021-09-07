@@ -49,6 +49,8 @@ extern "C"
     // lib swresample
 
 #include "libswscale/swscale.h"
+#include "libswresample/swresample.h"
+    #include "libavutil/audio_fifo.h"
 }
 
 class ScreenRecorder {
@@ -72,8 +74,11 @@ class ScreenRecorder {
     AVCodecContext* audioCodecContext;
     AVStream* audioSt;
     AVCodecContext* outAudioCodecContext;
+    AVCodec *inAudioCodec;
     AVCodec* outAudioCodec;
     int outAudioStreamIndex;
+    AVAudioFifo *fifo;
+    AVDictionary* audioOptions;
 
 
     int value;   //used for checking values returned from various functions
@@ -97,6 +102,14 @@ public:
     int openDevice() throw();
     int initOutputFile();
     int captureVideoFrames();
+
+    void captureAudio();
+
+    int initConvertedSamples(uint8_t ***converted_input_samples, AVCodecContext *output_codec_context, int frame_size);
+
+    int add_samples_to_fifo(uint8_t **converted_input_samples, const int frame_size);
+
+    int init_fifo();
 };
 
 
