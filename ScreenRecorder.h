@@ -67,8 +67,8 @@ class ScreenRecorder {
     AVFrame* pAVFrame;
     AVFrame* outFrame;
 
-    AVInputFormat* audioInputFormat;
-    AVFormatContext* audioFormatContext;
+    //AVInputFormat* audioInputFormat;
+    //AVFormatContext* audioFormatContext;
 
 
     int value;   //used for checking values returned from various functions

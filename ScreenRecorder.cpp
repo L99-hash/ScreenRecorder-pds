@@ -31,8 +31,8 @@ ScreenRecorder::ScreenRecorder(): stopCapture(false) , pauseCapture(false){
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 1920; //640;
-    height = 1104; //480;
+    width = 1920;//640;
+    height = 1104;//480;
 }
 
 ScreenRecorder::~ScreenRecorder(){
@@ -60,10 +60,10 @@ int ScreenRecorder::openDevice() throw(){
     value = 0;
     options = nullptr;
     pAVFormatContext = nullptr;
-    audioFormatContext = nullptr;
+    //audioFormatContext = nullptr;
 
     pAVFormatContext = avformat_alloc_context();
-    audioFormatContext = avformat_alloc_context();
+    //audioFormatContext = avformat_alloc_context();
 #ifdef _WIN32
     AVDictionary* opt = nullptr;
     pAVInputFormat = av_find_input_format("gdigrab");
@@ -98,8 +98,8 @@ int ScreenRecorder::openDevice() throw(){
     pAVInputFormat = av_find_input_format("x11grab");
     value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &opt);
 
-    audioInputFormat = av_find_input_format("alsa");
-    value = avformat_open_input(&audioFormatContext, "hw:0", audioInputFormat, nullptr);
+    //audioInputFormat = av_find_input_format("alsa");
+    //value = avformat_open_input(&audioFormatContext, "hw:0", audioInputFormat, nullptr);
 
     if(value !=0 ){
         //cerr << "Error in opening input device" << endl;
@@ -131,25 +131,25 @@ int ScreenRecorder::openDevice() throw(){
     }
 
     VideoStreamIndx = -1;
-    AudioStreamIndx = -1;
+    //AudioStreamIndx = -1;
 
     for(int i=0; i<pAVFormatContext->nb_streams; i++){
         if(pAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO){
             VideoStreamIndx = i;
         }
-        else if(audioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO){
+        /*else if(audioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO){
             AudioStreamIndx = i;
-        }
+        }*/
     }
 
     if(VideoStreamIndx == -1){
         cerr << "Error: unable to find video stream index" << endl;
         exit(-2);
     }
-    if(AudioStreamIndx == -1){
+    /*if(AudioStreamIndx == -1){
         cerr << "Error: unable to find audio stream index" << endl;
         exit(-2);
-    }
+    }*/
 
     pAVCodecContext = pAVFormatContext->streams[VideoStreamIndx]->codec;
 
@@ -358,6 +358,8 @@ int ScreenRecorder::captureVideoFrames() {
                     }
 
                     //cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
+                    //cout << "(size = " << outPacket.size << ")" << endl;
+
                     if(av_write_frame(outAVFormatContext, &outPacket) != 0){
                         cerr << "Error in writing video frame" << endl;
                     }
