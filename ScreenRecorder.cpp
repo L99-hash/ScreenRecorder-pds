@@ -60,10 +60,10 @@ int ScreenRecorder::openDevice() throw(){
     value = 0;
     options = nullptr;
     pAVFormatContext = nullptr;
-    //audioFormatContext = nullptr;
+    audioFormatContext = nullptr;
 
     pAVFormatContext = avformat_alloc_context();
-    //audioFormatContext = avformat_alloc_context();
+    audioFormatContext = avformat_alloc_context();
 #ifdef _WIN32
     AVDictionary* opt = nullptr;
     pAVInputFormat = av_find_input_format("gdigrab");
@@ -98,11 +98,23 @@ int ScreenRecorder::openDevice() throw(){
     pAVInputFormat = av_find_input_format("x11grab");
     value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &opt);
 
+    if(value !=0 ){
+        cerr << "Error in opening input device (video)" << endl;
+        exit(-1);
+        //throw error("Error in opening input device");
+    }
+    //get video stream infos from context
+    value = avformat_find_stream_info(pAVFormatContext, nullptr);
+    if (value < 0) {
+        cout << "\nCannot find the stream information";
+        exit(1);
+    }
+
     audioInputFormat = av_find_input_format("alsa");
-    value = avformat_open_input(&pAVFormatContext, "hw:0", audioInputFormat, nullptr);
+    value = avformat_open_input(&audioFormatContext, "hw:0", audioInputFormat, nullptr);
 
     if(value !=0 ){
-        cerr << "Error in opening input device" << endl;
+        cerr << "Error in opening input device (audio)" << endl;
         exit(-1);
         //throw error("Error in opening input device");
     }
@@ -136,9 +148,14 @@ int ScreenRecorder::openDevice() throw(){
     for(int i=0; i<pAVFormatContext->nb_streams; i++){
         if(pAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO){
             VideoStreamIndx = i;
+            break;
         }
-        else if(pAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO){
+    }
+
+    for(int i=0; i<audioFormatContext->nb_streams; i++){
+        if(audioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO){
             AudioStreamIndx = i;
+            break;
         }
     }
 
@@ -152,6 +169,8 @@ int ScreenRecorder::openDevice() throw(){
     }
 
     pAVCodecContext = pAVFormatContext->streams[VideoStreamIndx]->codec;
+
+    audioCodecContext = audioFormatContext->streams[AudioStreamIndx]->codec;
 
     pAVCodec = avcodec_find_decoder(pAVCodecContext->codec_id);
     if(pAVCodec == nullptr){
@@ -174,18 +193,18 @@ int ScreenRecorder::initOutputFile() {
     value = 0;
     outputFile = "../media/output.mp4";
 
-    avformat_alloc_output_context2(&outAVFormatContext, nullptr, nullptr, outputFile);
-    if(outAVFormatContext == nullptr){
-        cerr << "Error in allocating AVFormatContext" << endl;
-        exit(-4);
-    }
-
     outputFormat = av_guess_format(nullptr, outputFile, nullptr);
     if(outputFile == nullptr){
         cerr << "Error in guessing the video format, try with correct format" << endl;
         exit(-5);
     }
+    avformat_alloc_output_context2(&outAVFormatContext, outputFormat, nullptr, outputFile);
+    if(outAVFormatContext == nullptr){
+        cerr << "Error in allocating AVFormatContext" << endl;
+        exit(-4);
+    }
 
+    //Generate video stream
     videoSt = avformat_new_stream(outAVFormatContext, nullptr);
     if(videoSt == nullptr){
         cerr << "Error in creating AVFormatStream" << endl;
@@ -199,7 +218,7 @@ int ScreenRecorder::initOutputFile() {
         exit(-7);
     }
 
-    //set properties of the video file
+    //set properties of the video file (stream)
     outAVCodecContext = videoSt->codec;
     outAVCodecContext->codec_id = AV_CODEC_ID_MPEG4;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
     outAVCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -252,6 +271,67 @@ int ScreenRecorder::initOutputFile() {
         cerr << "Error in writing the header context" << endl;
         exit(-12);
     }
+
+    //Generate audio stream
+    audioCodecContext = nullptr;
+    outAudioCodec = nullptr;
+    int i;
+
+    AVStream *audio_st = avformat_new_stream(outAVFormatContext, nullptr);
+    if (!audio_st) {
+        cout << "\nCannot create audio stream";
+        exit(1);
+    }
+    outAudioCodec = avcodec_find_encoder(AV_CODEC_ID_AAC);
+    if (!outAudioCodec) {
+        cout << "\nCannot find requested encoder";
+        exit(1);
+    }
+    outAudioCodecContext = avcodec_alloc_context3(outAudioCodec);
+    if (!outAudioCodecContext) {
+        cout << "\nCannot create related VideoCodecContext";
+        exit(1);
+    }
+
+    /* set properties for the video stream encoding*/
+    if ((outAudioCodec)->supported_samplerates) {
+        outAudioCodecContext->sample_rate = (outAudioCodec)->supported_samplerates[0];
+        for (i = 0; (outAudioCodec)->supported_samplerates[i]; i++) {
+            if ((outAudioCodec)->supported_samplerates[i] == audioCodecContext->sample_rate)
+                outAudioCodecContext->sample_rate = audioCodecContext->sample_rate;
+        }
+    }
+    outAudioCodecContext->codec_id = AV_CODEC_ID_AAC;
+    outAudioCodecContext->sample_fmt  = (outAudioCodec)->sample_fmts ? (outAudioCodec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+    outAudioCodecContext->channels  = audioCodecContext->channels;
+    outAudioCodecContext->channel_layout = av_get_default_channel_layout(outAudioCodecContext->channels);
+    outAudioCodecContext->bit_rate = 96000;
+    outAudioCodecContext->time_base = { 1, audioCodecContext->sample_rate };
+
+    outAudioCodecContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
+
+    if ((outAVFormatContext)->oformat->flags & AVFMT_GLOBALHEADER) {
+        outAudioCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    }
+
+    if (avcodec_open2(outAudioCodecContext, outAudioCodec, nullptr)< 0) {
+        cout << "\nerror in opening the avcodec with error: ";
+        exit(1);
+    }
+
+
+    //find a free stream index
+    outAudioStreamIndex = -1;
+    for(i=0; i < outAVFormatContext->nb_streams; i++)
+        if(outAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_UNKNOWN)
+            outAudioStreamIndex = i;
+
+        if(outAudioStreamIndex < 0) {
+            cout << "\nCannot find a free stream for audio on the output";
+            exit(1);
+        }
+
+        avcodec_parameters_from_context(outAVFormatContext->streams[outAudioStreamIndex]->codecpar, outAudioCodecContext);
 
     return 0;
 }
