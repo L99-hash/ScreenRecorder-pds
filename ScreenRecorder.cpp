@@ -155,59 +155,61 @@ int ScreenRecorder::openDevice() throw(){
         exit(-1);
     }
 
-    /*=================        AUDIO      ====================*/
+    /*========================  AUDIO  ============================*/
     audioOptions = nullptr;
-    audioFormatContext = nullptr;
+    inAudioFormatContext = nullptr;
 
-    audioFormatContext = avformat_alloc_context();
+    inAudioFormatContext = avformat_alloc_context();
     value = av_dict_set(&audioOptions, "sample_rate", "44100", 0);
-    if(value!=0){
+    if(value < 0){
         cerr << "Error: cannot set audio sample rate" << endl;
         exit(-1);
     }
 
-    audioInputFormat = av_find_input_format("alsa");
-    value = avformat_open_input(&audioFormatContext, "hw:0", audioInputFormat, &audioOptions);
+    //audioInputFormat = av_find_input_format("alsa");
+    //value = avformat_open_input(&inAudioFormatContext, "hw:0", audioInputFormat, &audioOptions);
+    audioInputFormat = av_find_input_format("pulse");
+    value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
 
-    if(value !=0 ){
+    if(value != 0){
         cerr << "Error in opening input device (audio)" << endl;
         exit(-1);
         //throw error("Error in opening input device");
     }
 
-    value = avformat_find_stream_info(audioFormatContext, nullptr);
+    value = avformat_find_stream_info(inAudioFormatContext, nullptr);
     if(value != 0){
         cerr << "Error: cannot find the audio stream information" << endl;
         exit(-1);
     }
 
-    AudioStreamIndx = -1;
-    for(int i=0; i<audioFormatContext->nb_streams; i++){
-        if(audioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO){
-            AudioStreamIndx = i;
+    audioStreamIndx = -1;
+    for(int i=0; i<inAudioFormatContext->nb_streams; i++){
+        if(inAudioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO){
+            audioStreamIndx = i;
             break;
         }
     }
 
-    if(AudioStreamIndx == -1){
+    if(audioStreamIndx == -1){
         cerr << "Error: unable to find audio stream index" << endl;
         exit(-2);
     }
 
-    //audioCodecContext = audioFormatContext->streams[AudioStreamIndx]->codec;
-    AVCodecParameters  *params = audioFormatContext->streams[AudioStreamIndx]->codecpar;
+    //inAudioCodecContext = inAudioFormatContext->streams[audioStreamIndx]->codec;
+    AVCodecParameters  *params = inAudioFormatContext->streams[audioStreamIndx]->codecpar;
     inAudioCodec = avcodec_find_decoder(params->codec_id);
     if(inAudioCodec == nullptr){
         cerr << "Error: cannot find the audio decoder" << endl;
         exit(-1);
     }
 
-    audioCodecContext = avcodec_alloc_context3(inAudioCodec);
-    if(avcodec_parameters_to_context(audioCodecContext, params) < 0){
-        cerr << "Cannot cree codec context for audio input" << endl;
+    inAudioCodecContext = avcodec_alloc_context3(inAudioCodec);
+    if(avcodec_parameters_to_context(inAudioCodecContext, params) < 0){
+        cout << "Cannot create codec context for audio input" << endl;
     }
 
-    value = avcodec_open2(audioCodecContext, inAudioCodec, nullptr);
+    value = avcodec_open2(inAudioCodecContext, inAudioCodec, nullptr);
     if(value < 0){
         cerr << "Error: cannot open the input audio codec" << endl;
         exit(-1);
@@ -310,43 +312,82 @@ int ScreenRecorder::initOutputFile() {
         exit(-12);
     }
 
-    /*===============================  AUDIO  ========================*/
+    /*===============================  AUDIO  ==================================*/
 
     //Generate audio stream
-    //audioCodecContext = nullptr;
+    outAudioCodecContext = nullptr;
     outAudioCodec = nullptr;
     int i;
 
-    AVStream *audio_st = avformat_new_stream(outAVFormatContext, nullptr);
-    if (!audio_st) {
-        cout << "\nCannot create audio stream";
+    AVStream* audio_st = avformat_new_stream(outAVFormatContext, nullptr);
+    if (audio_st == nullptr) {
+        cerr << "Error: cannot create audio stream" << endl;
         exit(1);
     }
     outAudioCodec = avcodec_find_encoder(AV_CODEC_ID_AAC);
-    if (!outAudioCodec) {
-        cout << "\nCannot find requested encoder";
+    if (outAudioCodec == nullptr) {
+        cerr << "Error: cannot find requested encoder" << endl;
         exit(1);
     }
+
     outAudioCodecContext = avcodec_alloc_context3(outAudioCodec);
-    if (!outAudioCodecContext) {
-        cout << "\nCannot create related VideoCodecContext";
+    if (outAudioCodecContext == nullptr) {
+        cerr << "Error: cannot create related VideoCodecContext" << endl;
         exit(1);
     }
 
     /* set properties for the audio stream encoding*/
+    /*outAudioCodecContext->sample_fmt = (outAudioCodec)->sample_fmts ? (outAudioCodec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+    outAudioCodecContext->bit_rate = 64000;
+
+    if((outAudioCodec)->supported_samplerates){
+        outAudioCodecContext->sample_rate = (outAudioCodec)->supported_samplerates[0];
+
+        for(i=0; (outAudioCodec)->supported_samplerates[i]; i++){
+            if(outAudioCodec->supported_samplerates[i] == 44100){
+                outAudioCodecContext->sample_rate = 44100;
+            }
+        }
+    }
+
+    outAudioCodecContext->channels = av_get_channel_layout_nb_channels(outAudioCodecContext->channel_layout);
+    outAudioCodecContext->channel_layout = AV_CH_LAYOUT_STEREO;
+
+    if((outAudioCodec)->channel_layouts){
+        outAudioCodecContext->channel_layout = (outAudioCodec)->channel_layouts[0];
+
+        for(i=0; outAudioCodec->channel_layouts[i]; i++){
+            if(outAudioCodec->channel_layouts[i] == AV_CH_LAYOUT_STEREO){
+                outAudioCodecContext->channel_layout = AV_CH_LAYOUT_STEREO;
+            }
+        }
+    }
+
+    outAudioCodecContext->channels = av_get_channel_layout_nb_channels(outAudioCodecContext->channel_layout);
+    outAudioCodecContext->time_base = (AVRational) {1, outAudioCodecContext->sample_rate};
+
+    if(outAVFormatContext->oformat->flags & AVFMT_GLOBALHEADER){
+        outAudioCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    }
+
+    value = avcodec_open2(outAudioCodecContext, outAudioCodec, nullptr);
+    if(value < 0) {
+        cerr << "Error: cannot open AVCodec" << endl;
+        exit(-1);
+    }*/
     if ((outAudioCodec)->supported_samplerates) {
         outAudioCodecContext->sample_rate = (outAudioCodec)->supported_samplerates[0];
         for (i = 0; (outAudioCodec)->supported_samplerates[i]; i++) {
-            if ((outAudioCodec)->supported_samplerates[i] == audioCodecContext->sample_rate)
-                outAudioCodecContext->sample_rate = audioCodecContext->sample_rate;
+            if ((outAudioCodec)->supported_samplerates[i] == inAudioCodecContext->sample_rate)
+                outAudioCodecContext->sample_rate = inAudioCodecContext->sample_rate;
         }
     }
     outAudioCodecContext->codec_id = AV_CODEC_ID_AAC;
     outAudioCodecContext->sample_fmt  = (outAudioCodec)->sample_fmts ? (outAudioCodec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
-    outAudioCodecContext->channels  = audioCodecContext->channels;
+    outAudioCodecContext->channels  = inAudioCodecContext->channels;
     outAudioCodecContext->channel_layout = av_get_default_channel_layout(outAudioCodecContext->channels);
     outAudioCodecContext->bit_rate = 96000;
-    outAudioCodecContext->time_base = { 1, audioCodecContext->sample_rate };
+    outAudioCodecContext->time_base = { 1, inAudioCodecContext->sample_rate };
 
     outAudioCodecContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
 
@@ -462,9 +503,9 @@ void ScreenRecorder::captureAudio() {
                                          av_get_default_channel_layout(outAudioCodecContext->channels),
                                          outAudioCodecContext->sample_fmt,
                                          outAudioCodecContext->sample_rate,
-                                         av_get_default_channel_layout(audioCodecContext->channels),
-                                         audioCodecContext->sample_fmt,
-                                         audioCodecContext->sample_rate,
+                                         av_get_default_channel_layout(inAudioCodecContext->channels),
+                                         inAudioCodecContext->sample_fmt,
+                                         inAudioCodecContext->sample_rate,
                                          0, nullptr);
     if(!resampleContext){
         cout << "\nCannot allocate the resample context";
@@ -478,15 +519,15 @@ void ScreenRecorder::captureAudio() {
 
     cout<<"\n\n[AudioThread] thread started!";
     while(true) {
-        if(av_read_frame(audioFormatContext, inPacket) >= 0 && inPacket->stream_index == AudioStreamIndx) {
+        if(av_read_frame(inAudioFormatContext, inPacket) >= 0 && inPacket->stream_index == audioStreamIndx) {
             //decode video routing
-            av_packet_rescale_ts(outPacket,  audioFormatContext->streams[AudioStreamIndx]->time_base, audioCodecContext->time_base);
-            if((ret = avcodec_send_packet(audioCodecContext, inPacket)) < 0){
+            av_packet_rescale_ts(outPacket,  inAudioFormatContext->streams[audioStreamIndx]->time_base, inAudioCodecContext->time_base);
+            if((ret = avcodec_send_packet(inAudioCodecContext, inPacket)) < 0){
                 cout << "Cannot decode current video packet " <<  ret;
                 continue;
             }
             while (ret >= 0) {
-                ret = avcodec_receive_frame(audioCodecContext, rawFrame);
+                ret = avcodec_receive_frame(inAudioCodecContext, rawFrame);
                 if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
                     break;
                 else if (ret < 0) {

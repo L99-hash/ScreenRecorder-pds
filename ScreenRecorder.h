@@ -70,8 +70,8 @@ class ScreenRecorder {
     AVFrame* outFrame;
 
     AVInputFormat* audioInputFormat;
-    AVFormatContext* audioFormatContext;
-    AVCodecContext* audioCodecContext;
+    AVFormatContext* inAudioFormatContext;
+    AVCodecContext* inAudioCodecContext;
     AVStream* audioSt;
     AVCodecContext* outAudioCodecContext;
     AVCodec *inAudioCodec;
@@ -85,7 +85,7 @@ class ScreenRecorder {
     int codec_id;
     int out_size;
     int VideoStreamIndx;
-    int AudioStreamIndx;
+    int audioStreamIndx;
     double video_pts;
     const char* dev_name;
 
