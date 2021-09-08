@@ -36,6 +36,13 @@ ScreenRecorder::ScreenRecorder(): stopCapture(false) , pauseCapture(false){
 }
 
 ScreenRecorder::~ScreenRecorder(){
+
+    value = av_write_trailer(outAVFormatContext);
+    if(value < 0){
+        cerr << "Error in writing av trailer" << endl;
+        exit(-1);
+    }
+
     avformat_close_input(&pAVFormatContext);
     if(pAVFormatContext == nullptr){
         cout << "File close successfully" << endl;
@@ -59,7 +66,7 @@ ScreenRecorder::~ScreenRecorder(){
 int ScreenRecorder::openDevice() throw(){
     value = 0;
 
-    /*=================        VIDEO      ====================*/
+    /*==================================== VIDEO      ====================*/
     options = nullptr;
     pAVFormatContext = nullptr;
 
@@ -230,16 +237,16 @@ int ScreenRecorder::initOutputFile() {
     outputFile = "../media/output.mp4";
 
     outAVFormatContext = nullptr;
-    outputFormat = av_guess_format(nullptr, outputFile, nullptr);
-    if(outputFile == nullptr){
+    outputAVFormat = av_guess_format(nullptr, outputFile, nullptr);
+    if(outputAVFormat == nullptr){
         cerr << "Error in guessing the video format, try with correct format" << endl;
         exit(-5);
     }
 
-    //avformat_alloc_output_context2(&outAVFormatContext, outputFormat, nullptr, outputFile);  //for just video, we used this
-    avformat_alloc_output_context2(&outAVFormatContext, outputFormat, outputFormat->name, outputFile);
+    //avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, nullptr, outputFile);  //for just video, we used this
+    avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, outputAVFormat->name, outputFile);
     if(outAVFormatContext == nullptr){
-        cerr << "Error in allocating AVFormatContext" << endl;
+        cerr << "Error in allocating outAVFormatContext" << endl;
         exit(-4);
     }
 
@@ -294,25 +301,6 @@ int ScreenRecorder::initOutputFile() {
         exit(-9);
     }
 
-    //create an empty video file
-    if(!(outAVFormatContext->flags & AVFMT_NOFILE)){
-        if(avio_open2(&outAVFormatContext->pb, outputFile, AVIO_FLAG_WRITE, nullptr, nullptr) < 0){
-            cerr << "Error in creating the video file" << endl;
-            exit(-10);
-        }
-    }
-
-    if(outAVFormatContext->nb_streams == 0){
-        cerr << "Output file does not contain any stream" << endl;
-        exit(-11);
-    }
-
-    value = avformat_write_header(outAVFormatContext, &options);
-    if(value < 0){
-        cerr << "Error in writing the header context" << endl;
-        exit(-12);
-    }
-
     /*===============================  AUDIO  ==================================*/
 
     //Generate audio stream
@@ -325,6 +313,7 @@ int ScreenRecorder::initOutputFile() {
         cerr << "Error: cannot create audio stream" << endl;
         exit(1);
     }
+
     outAudioCodec = avcodec_find_encoder(AV_CODEC_ID_AAC);
     if (outAudioCodec == nullptr) {
         cerr << "Error: cannot find requested encoder" << endl;
@@ -397,22 +386,44 @@ int ScreenRecorder::initOutputFile() {
     }
 
     if (avcodec_open2(outAudioCodecContext, outAudioCodec, nullptr)< 0) {
-        cout << "\nerror in opening the avcodec with error: ";
+        cerr << "error in opening the avcodec" << endl;
         exit(1);
     }
 
     //find a free stream index
     outAudioStreamIndex = -1;
-    for(i=0; i < outAVFormatContext->nb_streams; i++)
-        if(outAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_UNKNOWN)
+    for(i=0; i < outAVFormatContext->nb_streams; i++){
+        if(outAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_UNKNOWN){
             outAudioStreamIndex = i;
-
-        if(outAudioStreamIndex < 0) {
-            cerr << "Error: cannot find a free stream for audio on the output" << endl;
-            exit(1);
         }
+    }
+    if(outAudioStreamIndex < 0) {
+        cerr << "Error: cannot find a free stream for audio on the output" << endl;
+        exit(1);
+    }
 
-        avcodec_parameters_from_context(outAVFormatContext->streams[outAudioStreamIndex]->codecpar, outAudioCodecContext);
+    avcodec_parameters_from_context(outAVFormatContext->streams[outAudioStreamIndex]->codecpar, outAudioCodecContext);
+
+    /*===========================================================================*/
+
+    //create an empty video file
+    if(!(outAVFormatContext->flags & AVFMT_NOFILE)){
+        if(avio_open2(&outAVFormatContext->pb, outputFile, AVIO_FLAG_WRITE, nullptr, nullptr) < 0){
+            cerr << "Error in creating the video file" << endl;
+            exit(-10);
+        }
+    }
+
+    if(outAVFormatContext->nb_streams == 0){
+        cerr << "Output file does not contain any stream" << endl;
+        exit(-11);
+    }
+
+    value = avformat_write_header(outAVFormatContext, &options);
+    if(value < 0){
+        cerr << "Error in writing the header context" << endl;
+        exit(-12);
+    }
 
     return 0;
 }
@@ -548,6 +559,20 @@ void ScreenRecorder::captureAudio() {
 
     cout << "[AudioThread] thread started!" << endl;
     while(true) {
+
+        unique_lock<mutex> ul(mu);
+        //ul.unlock();
+        //if(ii++ == noFrames)
+        //  break;
+
+        //ul.lock();
+        if(pauseCapture) cout << "Pause" << endl;
+        cv.wait(ul, [this](){ return !pauseCapture;});   //pause capture (not busy waiting)
+
+        if(stopCapture)  //check if the capture has to stop
+            break;
+
+        ul.unlock();
 
         if(av_read_frame(inAudioFormatContext, inPacket) >= 0 && inPacket->stream_index == audioStreamIndx) {
             //decode audio routing
@@ -793,14 +818,7 @@ int ScreenRecorder::captureVideoFrames() {
         }
     }
 
-    value = av_write_trailer(outAVFormatContext);
-    if(value < 0){
-        cerr << "Error in writing av trailer" << endl;
-        exit(-1);
-    }
-
     av_free(videoOutBuff);
-
 
     return 0;
 }

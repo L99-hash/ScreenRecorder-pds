@@ -61,7 +61,7 @@ class ScreenRecorder {
     AVCodec* pAVCodec;
     AVFormatContext* outAVFormatContext;
     char* outputFile;
-    AVOutputFormat* outputFormat;
+    AVOutputFormat* outputAVFormat;
     AVStream* videoSt;
     AVCodecContext* outVideoCodecContext;
     AVCodec* outVideoCodec;
