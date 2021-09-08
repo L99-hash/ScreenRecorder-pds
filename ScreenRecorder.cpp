@@ -474,6 +474,9 @@ void ScreenRecorder::captureAudio() {
     AVPacket *inPacket, *outPacket;
     AVFrame *rawFrame, *scaledFrame;
     uint8_t  **resampledData;
+
+    init_fifo();
+
     //allocate space for a packet
     inPacket = (AVPacket *) av_malloc(sizeof (AVPacket));
     if(!inPacket) {
@@ -612,8 +615,6 @@ int ScreenRecorder::captureVideoFrames() {
 
     int frameIndex = 0;
     value = 0;
-
-    init_fifo();
 
     pAVPacket = (AVPacket *) av_malloc(sizeof(AVPacket));
     if(pAVPacket == nullptr){
