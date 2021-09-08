@@ -236,7 +236,8 @@ int ScreenRecorder::initOutputFile() {
         exit(-5);
     }
 
-    avformat_alloc_output_context2(&outAVFormatContext, outputFormat, nullptr, outputFile);
+    //avformat_alloc_output_context2(&outAVFormatContext, outputFormat, nullptr, outputFile);  //for just video, we used this
+    avformat_alloc_output_context2(&outAVFormatContext, outputFormat, outputFormat->name, outputFile);
     if(outAVFormatContext == nullptr){
         cerr << "Error in allocating AVFormatContext" << endl;
         exit(-4);
@@ -251,43 +252,43 @@ int ScreenRecorder::initOutputFile() {
         exit(-6);
     }
 
-    outAVCodec = nullptr;   //avoid segmentation fault on call avcodec_alloc_context3(outAVCodec)
-    outAVCodecContext = avcodec_alloc_context3(outAVCodec);
-    if(outAVCodecContext == nullptr){
+    outVideoCodec = nullptr;   //avoid segmentation fault on call avcodec_alloc_context3(outAVCodec)
+    outVideoCodecContext = avcodec_alloc_context3(outVideoCodec);
+    if(outVideoCodecContext == nullptr){
         cerr << "Error in allocating the codec context" << endl;
         exit(-7);
     }
 
     //set properties of the video file (stream)
-    outAVCodecContext = videoSt->codec;
-    outAVCodecContext->codec_id = AV_CODEC_ID_MPEG4;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
-    outAVCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
-    outAVCodecContext->pix_fmt  = AV_PIX_FMT_YUV420P;
-    outAVCodecContext->bit_rate = 10000000; // 2500000
-    outAVCodecContext->width = width;   //dimension of the output video file
-    outAVCodecContext->height = height;
-    outAVCodecContext->gop_size = 10;     // 3
-    outAVCodecContext->global_quality = 500;
-    outAVCodecContext->max_b_frames = 2;
-    outAVCodecContext->time_base.num = 1;
-    outAVCodecContext->time_base.den = 30; // 15fps
-    outAVCodecContext->bit_rate_tolerance = 400000;
+    outVideoCodecContext = videoSt->codec;
+    outVideoCodecContext->codec_id = AV_CODEC_ID_MPEG4;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
+    outVideoCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
+    outVideoCodecContext->pix_fmt  = AV_PIX_FMT_YUV420P;
+    outVideoCodecContext->bit_rate = 10000000; // 2500000
+    outVideoCodecContext->width = width;   //dimension of the output video file
+    outVideoCodecContext->height = height;
+    outVideoCodecContext->gop_size = 10;     // 3
+    outVideoCodecContext->global_quality = 500;
+    outVideoCodecContext->max_b_frames = 2;
+    outVideoCodecContext->time_base.num = 1;
+    outVideoCodecContext->time_base.den = 30; // 15fps
+    outVideoCodecContext->bit_rate_tolerance = 400000;
 
     if(codec_id == AV_CODEC_ID_H264){
-        av_opt_set(outAVCodecContext->priv_data, "preset", "slow", 0);
+        av_opt_set(outVideoCodecContext->priv_data, "preset", "slow", 0);
     }
 
-    outAVCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);
-    if(outAVCodec == nullptr){
+    outVideoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);
+    if(outVideoCodec == nullptr){
         cerr << "Error in finding the AVCodec, try again with the correct codec" << endl;
         exit(-8);
     }
 
     if(outAVFormatContext->oformat->flags & AVFMT_GLOBALHEADER){
-        outAVCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        outVideoCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
     }
 
-    value = avcodec_open2(outAVCodecContext, outAVCodec, nullptr);
+    value = avcodec_open2(outVideoCodecContext, outVideoCodec, nullptr);
     if(value < 0){
         cerr << "Error in opening the AVCodec" << endl;
         exit(-9);
@@ -407,7 +408,7 @@ int ScreenRecorder::initOutputFile() {
             outAudioStreamIndex = i;
 
         if(outAudioStreamIndex < 0) {
-            cout << "\nCannot find a free stream for audio on the output";
+            cerr << "Error: cannot find a free stream for audio on the output" << endl;
             exit(1);
         }
 
@@ -480,7 +481,7 @@ void ScreenRecorder::captureAudio() {
     //allocate space for a packet
     inPacket = (AVPacket *) av_malloc(sizeof (AVPacket));
     if(!inPacket) {
-        cout << "\nCannot allocate an AVPacket for encoded video";
+        cerr << "Cannot allocate an AVPacket for encoded video" << endl;
         exit(1);
     }
     av_init_packet(inPacket);
@@ -488,17 +489,39 @@ void ScreenRecorder::captureAudio() {
     //allocate space for a packet
     rawFrame = av_frame_alloc();
     if(!rawFrame) {
-        cout << "\nCannot allocate an AVPacket for encoded video";
+        cerr << "Cannot allocate an AVPacket for encoded video" << endl;
+        exit(1);
+    }
+
+    scaledFrame = av_frame_alloc();
+    if(!scaledFrame) {
+        cerr << "Cannot allocate an AVPacket for encoded video" << endl;
         exit(1);
     }
 
     outPacket = (AVPacket *) av_malloc(sizeof (AVPacket));
     if(!outPacket) {
-        cout << "\nCannot allocate an AVPacket for encoded video";
+        cerr << "Cannot allocate an AVPacket for encoded video" << endl;
         exit(1);
     }
+    /*int audioOutBuffSize;
+    int nBytes = av_samples_get_buffer_size(nullptr, outAudioCodecContext->channels, outAudioCodecContext->frame_size, outAudioCodecContext->sample_fmt, 1);
+    uint8_t *audioOutBuff = (uint8_t *) av_malloc(nBytes);
+    if(audioOutBuff == nullptr){
+        cerr << "Error: cannot allocate audio out buffer" << endl;
+        exit(-1);
+    }
 
+    value = av_samples_fill_arrays(scaledFrame->data, scaledFrame->linesize, audioOutBuff, outAudioCodecContext->channels, outAudioCodecContext->frame_size, outAudioCodecContext->sample_fmt, 1);
+    if(value < 0){
+        cerr << "Error: cannot filling sample array" << endl;
+        exit(-1);
+    }
 
+    if(avcodec_open2(inAudioCodecContext, inAudioCodec, nullptr) < 0){
+        cerr << "Error: cannot open codec" << endl;
+        exit(-1);
+    }*/
 
     //init the resampler
     SwrContext* resampleContext = nullptr;
@@ -509,9 +532,10 @@ void ScreenRecorder::captureAudio() {
                                          av_get_default_channel_layout(inAudioCodecContext->channels),
                                          inAudioCodecContext->sample_fmt,
                                          inAudioCodecContext->sample_rate,
-                                         0, nullptr);
+                                         0,
+                                         nullptr);
     if(!resampleContext){
-        cout << "\nCannot allocate the resample context";
+        cerr << "Cannot allocate the resample context" << endl;
         exit(1);
     }
     if ((swr_init(resampleContext)) < 0) {
@@ -520,21 +544,59 @@ void ScreenRecorder::captureAudio() {
         exit(1);
     }
 
-    cout<<"\n\n[AudioThread] thread started!";
+    //int frameFinished, gotFrame;
+
+    cout << "[AudioThread] thread started!" << endl;
     while(true) {
+
         if(av_read_frame(inAudioFormatContext, inPacket) >= 0 && inPacket->stream_index == audioStreamIndx) {
-            //decode video routing
+            //decode audio routing
             av_packet_rescale_ts(outPacket,  inAudioFormatContext->streams[audioStreamIndx]->time_base, inAudioCodecContext->time_base);
             if((ret = avcodec_send_packet(inAudioCodecContext, inPacket)) < 0){
-                cout << "Cannot decode current video packet " <<  ret;
+                cout << "Cannot decode current audio packet " <<  ret << endl;
                 continue;
             }
+            /*ret = avcodec_decode_audio4(inAudioCodecContext, rawFrame, &frameFinished, inPacket);
+            if(ret < 0){
+                cout << "Error: unable to decode audio" << endl;
+            }
+
+            if(frameFinished){
+                //av_packet_rescale_ts(outPacket,  inAudioFormatContext->streams[audioStreamIndx]->time_base, inAudioCodecContext->time_base);
+                av_init_packet(outPacket);
+                outPacket->data = nullptr;
+                outPacket->size = 0;
+
+                scaledFrame->nb_samples     = outAudioCodecContext->frame_size;
+                scaledFrame->channel_layout = outAudioCodecContext->channel_layout;
+                scaledFrame->format         = outAudioCodecContext->sample_fmt;
+                scaledFrame->sample_rate    = outAudioCodecContext->sample_rate;
+
+                avcodec_encode_audio2(outAVCodecContext, outPacket, scaledFrame, &gotFrame);
+
+                if(gotFrame){
+                    if(outPacket->pts != AV_NOPTS_VALUE){
+                        outPacket->pts = av_rescale_q(outPacket->pts, audioSt->codec->time_base, audioSt->time_base);
+                    }
+                    if(outPacket->dts != AV_NOPTS_VALUE){
+                        outPacket->dts = av_rescale_q(outPacket->dts, audioSt->codec->time_base, audioSt->time_base);
+                    }
+
+                    if(av_write_frame(outAVFormatContext, outPacket) != 0){
+                        cerr << "Error in writing audio frame" <<endl;
+                    }
+
+                    av_packet_unref(outPacket);
+                }
+                av_packet_unref(outPacket);
+                av_free_packet(inPacket);
+            }*/
             while (ret >= 0) {
                 ret = avcodec_receive_frame(inAudioCodecContext, rawFrame);
                 if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
                     break;
                 else if (ret < 0) {
-                    fprintf(stderr, "Error during decoding\n");
+                    cerr << "Error during decoding" << endl;
                     exit(1);
                 }
                 if(outAVFormatContext->streams[outAudioStreamIndex]->start_time <= 0) {
@@ -557,7 +619,7 @@ void ScreenRecorder::captureAudio() {
 
                 scaledFrame = av_frame_alloc();
                 if(!scaledFrame) {
-                    cout << "\nCannot allocate an AVPacket for encoded video";
+                    cerr << "Cannot allocate an AVPacket for encoded video" << endl;
                     exit(1);
                 }
 
@@ -574,7 +636,7 @@ void ScreenRecorder::captureAudio() {
                     scaledFrame->pts = pts;
                     pts += scaledFrame->nb_samples;
                     if(avcodec_send_frame(outAudioCodecContext, scaledFrame) < 0){
-                        cout << "Cannot encode current audio packet ";
+                        cout << "Cannot encode current audio packet " << endl;
                         exit(1);
                     }
                     while(ret>=0){
@@ -582,18 +644,17 @@ void ScreenRecorder::captureAudio() {
                         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
                             break;
                         else if (ret < 0) {
-                            fprintf(stderr, "Error during encoding\n");
+                            cerr <<"Error during encoding" << endl;
                             exit(1);
                         }
                         //outPacket ready
                         av_packet_rescale_ts(outPacket, outAudioCodecContext->time_base,  outAVFormatContext->streams[outAudioStreamIndex]->time_base);
 
-
                         outPacket->stream_index = outAudioStreamIndex;
 
                         if(av_interleaved_write_frame(outAVFormatContext , outPacket) != 0)
                         {
-                            cout<<"\nerror in writing audio frame";
+                            cerr << "Error in writing audio frame" << endl;
                         }
                         av_packet_unref(outPacket);
                     }
@@ -606,6 +667,13 @@ void ScreenRecorder::captureAudio() {
             }
         }
     }
+    /*value = av_write_trailer(outAVFormatContext);
+    if(value != 0){
+        cerr << "Error in writing audio trailer" << endl;
+        exit(-1);
+    }
+
+    av_free(audioOutBuff);*/
 }
 
 int ScreenRecorder::captureVideoFrames() {
@@ -637,7 +705,7 @@ int ScreenRecorder::captureVideoFrames() {
     }
 
     int videoOutBuffSize;
-    int nBytes = av_image_get_buffer_size(outAVCodecContext->pix_fmt, outAVCodecContext->width, outAVCodecContext->height, 32);
+    int nBytes = av_image_get_buffer_size(outVideoCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, 32);
     uint8_t* videoOutBuff = (uint8_t *) av_malloc(nBytes);
 
     if(videoOutBuff == nullptr){
@@ -645,7 +713,7 @@ int ScreenRecorder::captureVideoFrames() {
         exit(-1);
     }
 
-    value = av_image_fill_arrays(outFrame->data, outFrame->linesize, videoOutBuff, AV_PIX_FMT_YUV420P, outAVCodecContext->width, outAVCodecContext->height, 1);
+    value = av_image_fill_arrays(outFrame->data, outFrame->linesize, videoOutBuff, AV_PIX_FMT_YUV420P, outVideoCodecContext->width, outVideoCodecContext->height, 1);
     if(value < 0){
         cerr << "Error in filling image array" << endl;
     }
@@ -655,7 +723,7 @@ int ScreenRecorder::captureVideoFrames() {
         cerr << "Could not open codec" << endl;
         exit(-1);
     }
-    swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outAVCodecContext->width, outAVCodecContext->height, outAVCodecContext->pix_fmt, SWS_BICUBIC,
+    swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, outVideoCodecContext->pix_fmt, SWS_BICUBIC,
                              nullptr, nullptr, nullptr);
     int ii=0;
     int noFrames = 100;
@@ -696,11 +764,11 @@ int ScreenRecorder::captureVideoFrames() {
                 outPacket.size = 0;
 
                 //disable warning on the console
-                outFrame->width = outAVCodecContext->width;
-                outFrame->height = outAVCodecContext->height;
-                outFrame->format = outAVCodecContext->pix_fmt;
+                outFrame->width = outVideoCodecContext->width;
+                outFrame->height = outVideoCodecContext->height;
+                outFrame->format = outVideoCodecContext->pix_fmt;
 
-                avcodec_encode_video2(outAVCodecContext, &outPacket, outFrame, &gotPicture);
+                avcodec_encode_video2(outVideoCodecContext, &outPacket, outFrame, &gotPicture);
                 if(gotPicture){
                     if(outPacket.pts != AV_NOPTS_VALUE){
                         outPacket.pts = av_rescale_q(outPacket.pts, videoSt->codec->time_base, videoSt->time_base);

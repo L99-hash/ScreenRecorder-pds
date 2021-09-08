@@ -48,7 +48,7 @@ int main() {
         exit(-1);
     }
 
-    std::thread /*t_video,*/ t_audio;
+    std::thread t_video/*, t_audio*/;
 
     while(!endWhile){
         std::cout << "Insert command: ";
@@ -63,14 +63,14 @@ int main() {
                break;
             case start:
                 started =  true;
-                /*t_video = std::move(std::thread{ [&screenRecorder](){
+                t_video = std::move(std::thread{ [&screenRecorder](){
                     screenRecorder.initOutputFile();
                     screenRecorder.captureVideoFrames();
-                } });*/
-                t_audio = std::move(std::thread{ [&screenRecorder](){
+                } });
+                /*t_audio = std::move(std::thread{ [&screenRecorder](){
                     screenRecorder.initOutputFile();
                     screenRecorder.captureAudio();
-                } });
+                } });*/
                 break;
             case pause:
                 pauseCommand(screenRecorder);
@@ -85,8 +85,8 @@ int main() {
     }
 
     if(started){
-        //t_video.join();
-        t_audio.join();
+        t_video.join();
+        //t_audio.join();
     }
     return 0;
 }

@@ -63,8 +63,8 @@ class ScreenRecorder {
     char* outputFile;
     AVOutputFormat* outputFormat;
     AVStream* videoSt;
-    AVCodecContext* outAVCodecContext;
-    AVCodec* outAVCodec;
+    AVCodecContext* outVideoCodecContext;
+    AVCodec* outVideoCodec;
     AVPacket* pAVPacket;
     AVFrame* pAVFrame;
     AVFrame* outFrame;
