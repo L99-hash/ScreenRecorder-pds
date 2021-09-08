@@ -68,6 +68,13 @@ int main() {
                     screenRecorder.captureVideoFrames();
                 } });*/
                 t_audio = std::move(std::thread{ [&screenRecorder](){
+                    /*try{
+                        screenRecorder.openDevice();
+                    }
+                    catch (std::exception& e){
+                        std::cout << e.what() << std::endl;
+                        exit(-1);
+                    }*/
                     screenRecorder.initOutputFile();
                     screenRecorder.captureAudio();
                 } });

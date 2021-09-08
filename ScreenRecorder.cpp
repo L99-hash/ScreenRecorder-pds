@@ -162,7 +162,7 @@ int ScreenRecorder::openDevice() throw(){
         exit(-1);
     }
 
-    /*========================  AUDIO  ============================*/
+    /*==========================================  AUDIO  ============================*/
     audioOptions = nullptr;
     inAudioFormatContext = nullptr;
 
@@ -173,11 +173,10 @@ int ScreenRecorder::openDevice() throw(){
         exit(-1);
     }
 
-    //audioInputFormat = av_find_input_format("alsa");
-    //value = avformat_open_input(&inAudioFormatContext, "hw:0", audioInputFormat, &audioOptions);
-    audioInputFormat = av_find_input_format("pulse");
-    value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
-
+    audioInputFormat = av_find_input_format("alsa");
+    value = avformat_open_input(&inAudioFormatContext, "hw:0", audioInputFormat, &audioOptions);
+    //audioInputFormat = av_find_input_format("pulse");
+    //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
     if(value != 0){
         cerr << "Error in opening input device (audio)" << endl;
         exit(-1);
@@ -197,29 +196,9 @@ int ScreenRecorder::openDevice() throw(){
             break;
         }
     }
-
     if(audioStreamIndx == -1){
         cerr << "Error: unable to find audio stream index" << endl;
         exit(-2);
-    }
-
-    //inAudioCodecContext = inAudioFormatContext->streams[audioStreamIndx]->codec;
-    AVCodecParameters  *params = inAudioFormatContext->streams[audioStreamIndx]->codecpar;
-    inAudioCodec = avcodec_find_decoder(params->codec_id);
-    if(inAudioCodec == nullptr){
-        cerr << "Error: cannot find the audio decoder" << endl;
-        exit(-1);
-    }
-
-    inAudioCodecContext = avcodec_alloc_context3(inAudioCodec);
-    if(avcodec_parameters_to_context(inAudioCodecContext, params) < 0){
-        cout << "Cannot create codec context for audio input" << endl;
-    }
-
-    value = avcodec_open2(inAudioCodecContext, inAudioCodec, nullptr);
-    if(value < 0){
-        cerr << "Error: cannot open the input audio codec" << endl;
-        exit(-1);
     }
 
     /*int h, w;
@@ -302,6 +281,25 @@ int ScreenRecorder::initOutputFile() {
     }
 
     /*===============================  AUDIO  ==================================*/
+
+    //inAudioCodecContext = inAudioFormatContext->streams[audioStreamIndx]->codec;
+    AVCodecParameters  *params = inAudioFormatContext->streams[audioStreamIndx]->codecpar;
+    inAudioCodec = avcodec_find_decoder(params->codec_id);
+    if(inAudioCodec == nullptr){
+        cerr << "Error: cannot find the audio decoder" << endl;
+        exit(-1);
+    }
+
+    inAudioCodecContext = avcodec_alloc_context3(inAudioCodec);
+    if(avcodec_parameters_to_context(inAudioCodecContext, params) < 0){
+        cout << "Cannot create codec context for audio input" << endl;
+    }
+
+    value = avcodec_open2(inAudioCodecContext, inAudioCodec, nullptr);
+    if(value < 0){
+        cerr << "Error: cannot open the input audio codec" << endl;
+        exit(-1);
+    }
 
     //Generate audio stream
     outAudioCodecContext = nullptr;
@@ -558,6 +556,7 @@ void ScreenRecorder::captureAudio() {
     //int frameFinished, gotFrame;
 
     cout << "[AudioThread] thread started!" << endl;
+
     while(true) {
 
         unique_lock<mutex> ul(mu);
@@ -677,7 +676,7 @@ void ScreenRecorder::captureAudio() {
 
                         outPacket->stream_index = outAudioStreamIndex;
 
-                        if(av_interleaved_write_frame(outAVFormatContext , outPacket) != 0)
+                        if(av_write_frame(outAVFormatContext , outPacket) != 0)
                         {
                             cerr << "Error in writing audio frame" << endl;
                         }
