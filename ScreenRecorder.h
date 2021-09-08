@@ -94,6 +94,7 @@ class ScreenRecorder {
 public:
     std::condition_variable cv;
     std::mutex mu;
+    std::mutex write_lock;
     bool stopCapture;
     bool pauseCapture;
 

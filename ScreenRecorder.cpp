@@ -676,10 +676,12 @@ void ScreenRecorder::captureAudio() {
 
                         outPacket->stream_index = outAudioStreamIndex;
 
+                        write_lock.lock();
                         if(av_write_frame(outAVFormatContext , outPacket) != 0)
                         {
                             cerr << "Error in writing audio frame" << endl;
                         }
+                        write_lock.unlock();
                         av_packet_unref(outPacket);
                     }
                     ret=0;
@@ -804,10 +806,11 @@ int ScreenRecorder::captureVideoFrames() {
                     //cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
                     //cout << "(size = " << outPacket.size << ")" << endl;
 
+                    write_lock.lock();
                     if(av_write_frame(outAVFormatContext, &outPacket) != 0){
                         cerr << "Error in writing video frame" << endl;
                     }
-
+                    write_lock.unlock();
                     av_packet_unref(&outPacket);
                 }
 
