@@ -17,7 +17,7 @@ void stopCommand(ScreenRecorder &sr){
     sr.stopCapture = true;
     if(sr.pauseCapture)
         sr.pauseCapture = false;
-    sr.cv.notify_one();
+    sr.cv.notify_all();
 }
 
 void pauseCommand(ScreenRecorder &sr){
@@ -30,7 +30,7 @@ void resumeCommand(ScreenRecorder &sr){
     std::unique_lock<std::mutex> ul(sr.mu);
     if(sr.pauseCapture){
         sr.pauseCapture = false;
-        sr.cv.notify_one();
+        sr.cv.notify_all();
     }
 }
 

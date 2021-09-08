@@ -174,7 +174,7 @@ int ScreenRecorder::openDevice() throw(){
     }
 
     audioInputFormat = av_find_input_format("alsa");
-    value = avformat_open_input(&inAudioFormatContext, "hw:0", audioInputFormat, &audioOptions);
+    value = avformat_open_input(&inAudioFormatContext, "", audioInputFormat, &audioOptions);
     //audioInputFormat = av_find_input_format("pulse");
     //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
     if(value != 0){
