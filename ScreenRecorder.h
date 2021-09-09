@@ -100,17 +100,18 @@ public:
 
     ScreenRecorder();
     ~ScreenRecorder();
-    int openDevice() throw();
+    int openVideoDevice() throw();
     int initOutputFile();
     int captureVideoFrames();
-
     void captureAudio();
-
     int initConvertedSamples(uint8_t ***converted_input_samples, AVCodecContext *output_codec_context, int frame_size);
-
     int add_samples_to_fifo(uint8_t **converted_input_samples, const int frame_size);
-
     int init_fifo();
+    int openAudioDevice();
+
+    void generateVideoStream();
+
+    void generateAudioStream();
 };
 
 

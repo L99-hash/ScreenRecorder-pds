@@ -40,18 +40,11 @@ int main() {
     bool started = false;
 
     ScreenRecorder screenRecorder;
-    try{
-        screenRecorder.openDevice();
-    }
-    catch (std::exception& e){
-        std::cout << e.what() << std::endl;
-        exit(-1);
-    }
 
     std::thread t_video, t_audio;
 
     while(!endWhile){
-        std::cout << "Insert command: ";
+        std::cout << "\nInsert command: ";
         std::cin >> cmd;
 
         Command c = stringToInt(cmd);
@@ -63,6 +56,8 @@ int main() {
                break;
             case start:
                 started =  true;
+                screenRecorder.openAudioDevice();
+                screenRecorder.openVideoDevice();
                 screenRecorder.initOutputFile();
                 t_video = std::move(std::thread{ [&screenRecorder](){
                     screenRecorder.captureVideoFrames();
@@ -78,7 +73,7 @@ int main() {
                 resumeCommand(screenRecorder);
                 break;
            default:
-               std::cout << "Command: " << cmd << " does not exist" << std::endl;
+               std::cout << "Command: " << "\"" << cmd << "\"" << " does not exist" << std::endl;
                break;
         }
     }
