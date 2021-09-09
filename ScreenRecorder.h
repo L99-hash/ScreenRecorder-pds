@@ -68,6 +68,7 @@ class ScreenRecorder {
     AVPacket* pAVPacket;
     AVFrame* pAVFrame;
     AVFrame* outFrame;
+    int outVideoStreamIndex;
 
     AVInputFormat* audioInputFormat;
     AVFormatContext* inAudioFormatContext;
