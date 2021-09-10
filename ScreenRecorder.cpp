@@ -186,7 +186,6 @@ int ScreenRecorder::openVideoDevice() throw(){
         cerr << "Error: unable to find decoder video" << endl;
         exit(-1);
     }
-
     //pAVCodecContext = avcodec_alloc_context3(pAVCodec);
     //avcodec_parameters_to_context(pAVCodecContext, params);
 
@@ -249,7 +248,7 @@ int ScreenRecorder::openAudioDevice(){
 
 int ScreenRecorder::initOutputFile() {
     value = 0;
-    outputFile = "../media/output.mp4";
+    outputFile = "media/output.mp4";
 
     outAVFormatContext = nullptr;
     outputAVFormat = av_guess_format(nullptr, outputFile, nullptr);
@@ -301,7 +300,13 @@ void ScreenRecorder::generateVideoStream(){
         exit(-6);
     }
 
-    outVideoCodec = nullptr;   //avoid segmentation fault on call avcodec_alloc_context3(outAVCodec)
+    outVideoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);  //AV_CODEC_ID_MPEG4
+    if(outVideoCodec == nullptr){
+        cerr << "Error in finding the AVCodec, try again with the correct codec" << endl;
+        exit(-8);
+    }
+
+    //outVideoCodec = nullptr;   //avoid segmentation fault on call avcodec_alloc_context3(outAVCodec)
     outVideoCodecContext = avcodec_alloc_context3(outVideoCodec);
     if(outVideoCodecContext == nullptr){
         cerr << "Error in allocating the codec context" << endl;
@@ -313,7 +318,7 @@ void ScreenRecorder::generateVideoStream(){
     outVideoCodecContext->codec_id = AV_CODEC_ID_MPEG4;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
     outVideoCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
     outVideoCodecContext->pix_fmt  = AV_PIX_FMT_YUV420P;
-    outVideoCodecContext->bit_rate = 10000000; // 2500000
+    outVideoCodecContext->bit_rate = 10000000; //2500000;
     outVideoCodecContext->width = width;   //dimension of the output video file
     outVideoCodecContext->height = height;
     outVideoCodecContext->gop_size = 10;     // 3
@@ -323,14 +328,8 @@ void ScreenRecorder::generateVideoStream(){
     outVideoCodecContext->time_base.den = 30; // 15fps
     outVideoCodecContext->bit_rate_tolerance = 400000;
 
-    if(codec_id == AV_CODEC_ID_H264){
+    if(outVideoCodecContext->codec_id == AV_CODEC_ID_H264){
         av_opt_set(outVideoCodecContext->priv_data, "preset", "slow", 0);
-    }
-
-    outVideoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);
-    if(outVideoCodec == nullptr){
-        cerr << "Error in finding the AVCodec, try again with the correct codec" << endl;
-        exit(-8);
     }
 
     if(outAVFormatContext->oformat->flags & AVFMT_GLOBALHEADER){
@@ -714,6 +713,10 @@ int ScreenRecorder::captureVideoFrames() {
     int64_t pts = 0;
     int flag;
     int frameFinished = 0;
+    bool endPause = false;
+    int numPause = 0;
+
+    ofstream outFile{"media/log.txt", ios::out};
 
     int frameIndex = 0;
     value = 0;
@@ -773,9 +776,38 @@ int ScreenRecorder::captureVideoFrames() {
         //ul.lock();
         if(pauseCapture) {
             cout << "Pause" << endl;
-            cout << "outVideoCodecContext->time_base: " << outVideoCodecContext->time_base.num << ", " << outVideoCodecContext->time_base.num << endl;
+            outFile << "///////////////////   Pause  ///////////////////" << endl;
+            cout << "outVideoCodecContext->time_base: " << outVideoCodecContext->time_base.num << ", " << outVideoCodecContext->time_base.den << endl;
+            ////////////////////////////////////////////////////////////////////
+            endPause = true;
+            numPause++;
+            /*avformat_close_input(&pAVFormatContext);
+            if(pAVFormatContext == nullptr){
+                cout << "File close successfully" << endl;
+            }
+            else{
+                cerr << "Error: unable to close the file" << endl;
+                exit(-1);
+                //throw "Error: unable to close the file";
+            }
+
+            avformat_free_context(pAVFormatContext);
+            if(pAVFormatContext == nullptr){
+                cout << "VideoFormat freed successfully" << endl;
+            }
+            else{
+                cerr << "Error: unable to free VideoFormatContext" << endl;
+                exit(-1);
+            }*/
+            ////////////////////////////////////////////////////////////////////
         }
         cv.wait(ul, [this](){ return !pauseCapture;});   //pause capture (not busy waiting)
+        if(endPause){
+            endPause = false;
+            ///////////////////////////////////////////////////////////////////
+
+            ////////////////////////////////////////////////////////////////////
+        }
 
         if(stopCapture)  //check if the capture has to stop
             break;
@@ -783,7 +815,6 @@ int ScreenRecorder::captureVideoFrames() {
 
         if(av_read_frame(pAVFormatContext, pAVPacket) >= 0 && pAVPacket->stream_index == VideoStreamIndx){
             av_packet_rescale_ts(pAVPacket, pAVFormatContext->streams[VideoStreamIndx]->time_base, pAVCodecContext->time_base);
-
             /////////////////////////////////////////////////////////////////////
             /*if((value = avcodec_send_packet(pAVCodecContext, pAVPacket)) < 0){
                 cout << "Cannot decode current video packet" << endl;
@@ -874,6 +905,7 @@ int ScreenRecorder::captureVideoFrames() {
                 sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
 
                 avcodec_encode_video2(outVideoCodecContext, &outPacket, outFrame, &gotPicture);
+
                 if(gotPicture){
                     if(outPacket.pts != AV_NOPTS_VALUE){
                         outPacket.pts = av_rescale_q(outPacket.pts, videoSt->codec->time_base, videoSt->time_base);
@@ -881,12 +913,17 @@ int ScreenRecorder::captureVideoFrames() {
                     if(outPacket.dts != AV_NOPTS_VALUE){
                         outPacket.dts = av_rescale_q(outPacket.dts, videoSt->codec->time_base, videoSt->time_base);
                     }
-
+                    
                     //cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
                     //cout << "(size = " << outPacket.size << ")" << endl;
 
                     //av_packet_rescale_ts(&outPacket, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
                     //outPacket.stream_index = outVideoStreamIndex;
+                    
+                    outFile << "outPacket->duration: " << outPacket.duration << ", " << "pAVPacket->duration: " << pAVPacket->duration << endl;
+                    outFile << "outPacket->pts: " << outPacket.pts << ", " << "pAVPacket->pts: " << pAVPacket->pts << endl;
+                    outFile << "outPacket.dts: " << outPacket.dts << ", " << "pAVPacket->dts: " << pAVPacket->dts << endl;
+                    
                     write_lock.lock();
                     if(av_write_frame(outAVFormatContext, &outPacket) != 0){
                         cerr << "Error in writing video frame" << endl;
@@ -900,6 +937,8 @@ int ScreenRecorder::captureVideoFrames() {
             }
         }
     }
+
+    outFile.close();
 
     av_free(videoOutBuff);
 

@@ -129,3 +129,5 @@ CTestTestfile.cmake
 
 .DS_Store
 media/output.mp4
+media/log.txt
+ScreenRecorder_pds
