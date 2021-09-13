@@ -47,7 +47,7 @@ ScreenRecorder::~ScreenRecorder(){
             exit(-1);
         }
 
-        /*avformat_close_input(&inAudioFormatContext);
+        avformat_close_input(&inAudioFormatContext);
         if(inAudioFormatContext == nullptr){
             cout << "inAudioFormatContext close successfully" << endl;
         }
@@ -65,7 +65,7 @@ ScreenRecorder::~ScreenRecorder(){
             cerr << "Error: unable to free AudioFormatContext" << endl;
             exit(-1);
         }
-        */
+
         avformat_close_input(&pAVFormatContext);
         if(pAVFormatContext == nullptr){
             cout << "File close successfully" << endl;
@@ -148,22 +148,22 @@ int ScreenRecorder::openVideoDevice() throw(){
 #else
 
     show_avfoundation_device();
-    value = av_dict_set(&options, "pixel_format", "0rgb", 0);
+    value = av_dict_set(&options, "pixel_format", "yuv420p", 0);
     if(value < 0){
         cerr << "Error in setting pixel format" <<endl;
         exit(-1);
     }
 
-    value = av_dict_set(&options, "video_device_index", "1", 0);
-
+    //value = av_dict_set(&options, "video_device_index", "1", 0);
+    /*
     if(value < 0){
         cerr << "Error in setting video device index" <<endl;
         exit(-1);
     }
-
+    */
     pAVInputFormat = av_find_input_format("avfoundation");
 
-    if(avformat_open_input(&pAVFormatContext, "Capture screen 0:none", pAVInputFormat, &options)!=0){  //TODO trovare un modo per selezionare sempre lo schermo (forse "Capture screen 0")
+    if(avformat_open_input(&pAVFormatContext, "1:none", pAVInputFormat, &options)!=0){  //TODO trovare un modo per selezionare sempre lo schermo (forse "Capture screen 0")
         cerr << "Error in opening input device" << endl;
         exit(-1);
     }
@@ -257,10 +257,17 @@ int ScreenRecorder::openAudioDevice(){
         exit(-1);
     }
 
+#if defined linux
     audioInputFormat = av_find_input_format("alsa");
     value = avformat_open_input(&inAudioFormatContext, "hw:0", audioInputFormat, &audioOptions);
     //audioInputFormat = av_find_input_format("pulse");
     //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
+#endif
+
+#if defined __APPLE__
+    audioInputFormat = av_find_input_format("avfoundation");
+    value = avformat_open_input(&inAudioFormatContext, "none:0", audioInputFormat, &audioOptions);
+#endif
     if(value != 0){
         cerr << "Error in opening input device (audio)" << endl;
         exit(-1);
@@ -306,7 +313,7 @@ int ScreenRecorder::initOutputFile() {
 
     /*===========================================================================*/
     this->generateVideoStream();
-    //this->generateAudioStream();
+    this->generateAudioStream();
 
     //create an empty video file
     if(!(outAVFormatContext->flags & AVFMT_NOFILE)){
