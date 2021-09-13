@@ -10,11 +10,14 @@ using namespace std;
 class error : exception {
 private:
     const char *desc;
+
+
 public:
     error(const char * description): desc(description){}
     const char* what() const noexcept {
         return desc;
     }
+
 };
 
 void show_avfoundation_device(){
@@ -37,48 +40,50 @@ ScreenRecorder::ScreenRecorder(): stopCapture(false) , pauseCapture(false){
 
 ScreenRecorder::~ScreenRecorder(){
 
-    value = av_write_trailer(outAVFormatContext);
-    if(value < 0){
-        cerr << "Error in writing av trailer" << endl;
-        exit(-1);
-    }
+    if(started){
+        value = av_write_trailer(outAVFormatContext);
+        if(value < 0){
+            cerr << "Error in writing av trailer" << endl;
+            exit(-1);
+        }
 
-    /*avformat_close_input(&inAudioFormatContext);
-    if(inAudioFormatContext == nullptr){
-        cout << "inAudioFormatContext close successfully" << endl;
-    }
-    else{
-        cerr << "Error: unable to close the inAudioFormatContext" << endl;
-        exit(-1);
-        //throw "Error: unable to close the file";
-    }
+        /*avformat_close_input(&inAudioFormatContext);
+        if(inAudioFormatContext == nullptr){
+            cout << "inAudioFormatContext close successfully" << endl;
+        }
+        else{
+            cerr << "Error: unable to close the inAudioFormatContext" << endl;
+            exit(-1);
+            //throw "Error: unable to close the file";
+        }
 
-    avformat_free_context(inAudioFormatContext);
-    if(inAudioFormatContext == nullptr){
-        cout << "AudioFormat freed successfully" << endl;
-    }
-    else{
-        cerr << "Error: unable to free AudioFormatContext" << endl;
-        exit(-1);
-    }
-    */
-    avformat_close_input(&pAVFormatContext);
-    if(pAVFormatContext == nullptr){
-        cout << "File close successfully" << endl;
-    }
-    else{
-        cerr << "Error: unable to close the file" << endl;
-        exit(-1);
-        //throw "Error: unable to close the file";
-    }
+        avformat_free_context(inAudioFormatContext);
+        if(inAudioFormatContext == nullptr){
+            cout << "AudioFormat freed successfully" << endl;
+        }
+        else{
+            cerr << "Error: unable to free AudioFormatContext" << endl;
+            exit(-1);
+        }
+        */
+        avformat_close_input(&pAVFormatContext);
+        if(pAVFormatContext == nullptr){
+            cout << "File close successfully" << endl;
+        }
+        else{
+            cerr << "Error: unable to close the file" << endl;
+            exit(-1);
+            //throw "Error: unable to close the file";
+        }
 
-    avformat_free_context(pAVFormatContext);
-    if(pAVFormatContext == nullptr){
-        cout << "VideoFormat freed successfully" << endl;
-    }
-    else{
-        cerr << "Error: unable to free VideoFormatContext" << endl;
-        exit(-1);
+        avformat_free_context(pAVFormatContext);
+        if(pAVFormatContext == nullptr){
+            cout << "VideoFormat freed successfully" << endl;
+        }
+        else{
+            cerr << "Error: unable to free VideoFormatContext" << endl;
+            exit(-1);
+        }
     }
 }
 

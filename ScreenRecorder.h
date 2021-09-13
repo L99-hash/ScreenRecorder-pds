@@ -98,7 +98,7 @@ public:
     std::mutex write_lock;
     bool stopCapture;
     bool pauseCapture;
-
+    bool started = false;
     ScreenRecorder();
     ~ScreenRecorder();
     int openVideoDevice() throw();
@@ -113,6 +113,9 @@ public:
     void generateVideoStream();
 
     void generateAudioStream();
+    void setStarted(bool val){
+        started = val;
+    }
 };
 
 
