@@ -1,6 +1,7 @@
 # User ================================
 Ignore other user-defined file #
 media/output.mp4
+media/log.txt
 .vs/
 
 # Clion ================================

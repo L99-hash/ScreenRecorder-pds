@@ -14,7 +14,7 @@ Command stringToInt(std::string cmd) {
 
 void stopCommand(ScreenRecorder& sr) {
     std::unique_lock<std::mutex> ul(sr.mu);
-    sr.stopCapture = true;
+    //sr.stopCapture = true;
     if (sr.pauseCapture)
         sr.pauseCapture = false;
     sr.cv.notify_all();
@@ -52,8 +52,9 @@ int main() {
 
     std::thread t_video, t_audio;
 
-    while (!endWhile) {
-        showCommands();
+    showCommands();
+
+    //while (!endWhile) {
         std::cout << "\nInsert command: ";
         std::cin >> cmd;
 
@@ -85,7 +86,6 @@ int main() {
             }
             else {
                 std::cout << "Already started." << std::endl;
-                showCommands();
             }
 
         case pause:
@@ -95,7 +95,6 @@ int main() {
             }
             else {
                 std::cout << "Not yet started!" << std::endl;
-                showCommands();
             }
             break;
         case resume:
@@ -105,15 +104,13 @@ int main() {
             }
             else {
                 std::cout << "Not in pause!" << std::endl;
-                showCommands();
             }
             break;
         default:
             std::cout << "Command: " << "\"" << cmd << "\"" << " does not exist" << std::endl;
-            showCommands();
             break;
         }
-    }
+    //}
 
     if (started) {
         t_video.join();

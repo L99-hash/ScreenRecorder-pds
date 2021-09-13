@@ -54,6 +54,27 @@ extern "C"
 #include "libavutil/audio_fifo.h"
 }
 
+#if defined _WIN32
+#define VIDEO "gdigrab"
+#define VIDEO_DEVICE "desktop"
+#define AUDIO "dshow"
+#define AUDIO_DEVICE "audio="
+#endif
+
+#if defined linux
+#define VIDEO "x11grab"
+#define VIDEO_DEVICE ":0.0"
+#define AUDIO "alsa"
+#define AUDIO_DEVICE "hw:0"
+#endif
+
+#if defined __APPLE__
+#define VIDEO "avfoundation"
+#define VIDEO_DEVICE "0:none"
+#define AUDIO "avfoudation"
+#define AUDIO_DEVICE "none:0"
+#endif
+
 class ScreenRecorder {
     AVInputFormat* pAVInputFormat;
     AVFormatContext* pAVFormatContext;
@@ -97,7 +118,6 @@ public:
     std::condition_variable cv;
     std::mutex mu;
     std::mutex write_lock;
-    bool stopCapture;
     bool pauseCapture;
     bool started = false;
     ScreenRecorder();

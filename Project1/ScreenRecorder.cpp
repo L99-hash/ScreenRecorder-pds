@@ -5,8 +5,25 @@
 #include "ScreenRecorder.h"
 #include <exception>
 #include <string>
+#include <time.h>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <csignal>
 
 using namespace std;
+
+atomic<bool> stopCapture{ false };
+
+void stopSignalHandler(int signum) {
+    cout << "\nInterrupt signal (" << signum << ") received.\n";
+
+    // cleanup and close up stuff here  
+    // terminate program  
+
+    //exit(signum);
+    stopCapture.store(true);
+}
 
 class error : exception {
 private:
@@ -42,9 +59,12 @@ void show_avfoundation_device() {
     printf("=============================\n");
 }
 
-ScreenRecorder::ScreenRecorder() : stopCapture(false), pauseCapture(false) {
+ScreenRecorder::ScreenRecorder() : pauseCapture(false) {
     avcodec_register_all();
     avdevice_register_all();
+
+    // register signal SIGINT and signal handler  
+   signal(SIGINT, stopSignalHandler);
 
     width = 1920;//640;
     height = 1104;//480;
@@ -826,7 +846,10 @@ int ScreenRecorder::captureVideoFrames() {
     AVPacket outPacket;
     int gotPicture;
 
-    while (true) {
+    time_t startTime;
+    time(&startTime);
+
+    while (!stopCapture.load()) {
 
         unique_lock<mutex> ul(mu);
         //ul.unlock();
@@ -973,6 +996,21 @@ int ScreenRecorder::captureVideoFrames() {
                     outFile << "outPacket->duration: " << outPacket.duration << ", " << "pAVPacket->duration: " << pAVPacket->duration << endl;
                     outFile << "outPacket->pts: " << outPacket.pts << ", " << "pAVPacket->pts: " << pAVPacket->pts << endl;
                     outFile << "outPacket.dts: " << outPacket.dts << ", " << "pAVPacket->dts: " << pAVPacket->dts << endl;
+
+                    time_t timer;
+                    double seconds;
+
+                    if (!stopCapture.load()) {
+                        time(&timer);
+                        seconds = difftime(timer, startTime);
+                        int h = (int)(seconds / 3600);
+                        int m = (int)(seconds / 60) % 60;
+                        int s = (int)(seconds) % 60;
+
+                        std::cout << std::flush << "\r" << std::setw(2) << std::setfill('0') << h << ':'
+                            << std::setw(2) << std::setfill('0') << m << ':'
+                            << std::setw(2) << std::setfill('0') << s << std::flush;
+                    }
 
                     write_lock.lock();
                     if (av_write_frame(outAVFormatContext, &outPacket) != 0) {
