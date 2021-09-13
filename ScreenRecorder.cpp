@@ -43,7 +43,7 @@ ScreenRecorder::~ScreenRecorder(){
         exit(-1);
     }
 
-    avformat_close_input(&inAudioFormatContext);
+    /*avformat_close_input(&inAudioFormatContext);
     if(inAudioFormatContext == nullptr){
         cout << "inAudioFormatContext close successfully" << endl;
     }
@@ -61,7 +61,7 @@ ScreenRecorder::~ScreenRecorder(){
         cerr << "Error: unable to free AudioFormatContext" << endl;
         exit(-1);
     }
-
+    */
     avformat_close_input(&pAVFormatContext);
     if(pAVFormatContext == nullptr){
         cout << "File close successfully" << endl;
@@ -118,11 +118,11 @@ int ScreenRecorder::openVideoDevice() throw(){
     //Video frame size. The default is to capture the full screen
     //av_dict_set(&opt, "offset_x", "20", 0);
     //av_dict_set(&opt, "offset_y", "20", 0);
-    AVDictionary* opt = nullptr;
+    //AVDictionary* opt = nullptr;
     int offset_x = 0, offset_y = 0;
     string url = ":0.0+" + to_string(offset_x) + "," + to_string(offset_y);  //custom string to set the start point of the screen section
-    string dimension = to_string(width) + "x" + to_string(height);
-    av_dict_set(&opt,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
+    //string dimension = to_string(width) + "x" + to_string(height);
+    //av_dict_set(&opt,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
     pAVInputFormat = av_find_input_format("x11grab");
     value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &opt);
 
@@ -140,15 +140,34 @@ int ScreenRecorder::openVideoDevice() throw(){
 #else
 
     show_avfoundation_device();
+    value = av_dict_set(&options, "pixel_format", "0rgb", 0);
+    if(value < 0){
+        cerr << "Error in setting pixel format" <<endl;
+        exit(-1);
+    }
+
+    value = av_dict_set(&options, "video_device_index", "1", 0);
+
+    if(value < 0){
+        cerr << "Error in setting video device index" <<endl;
+        exit(-1);
+    }
+
     pAVInputFormat = av_find_input_format("avfoundation");
-    if(avformat_open_input(&pAVFormatContext, "1", pAVInputFormat, nullptr)!=0){  //TODO trovare un modo per selezionare sempre lo schermo (forse "Capture screen 0")
+
+    if(avformat_open_input(&pAVFormatContext, "Capture screen 0:none", pAVInputFormat, &options)!=0){  //TODO trovare un modo per selezionare sempre lo schermo (forse "Capture screen 0")
         cerr << "Error in opening input device" << endl;
         exit(-1);
     }
 
+
+
 #endif
 
+    string dimension = to_string(width) + "x" + to_string(height);
+    av_dict_set(&options,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
     //set frame per second
+
     value = av_dict_set(&options, "framerate", "30", 0);
     if(value < 0){
         cerr << "Error in setting dictionary value (setting framerate)" << endl;
@@ -160,10 +179,24 @@ int ScreenRecorder::openVideoDevice() throw(){
         cerr << "Error in setting dictionary value (setting preset value)" << endl;
         exit(-1);
     }
-
+    /*
     value = av_dict_set(&options, "vsync", "1", 0);
     if(value < 0){
         cerr << "Error in setting dictionary value (setting vsync value)" << endl;
+        exit(-1);
+    }
+    */
+
+    value = av_dict_set(&options, "probesize", "60M", 0);
+    if(value < 0){
+        cerr << "Error in setting probesize value" << endl;
+        exit(-1);
+    }
+
+    value = avformat_find_stream_info(pAVFormatContext, nullptr);
+
+    if(value < 0){
+        cerr << "Error in retrieving the stream info" << endl;
         exit(-1);
     }
 
@@ -186,6 +219,8 @@ int ScreenRecorder::openVideoDevice() throw(){
         cerr << "Error: unable to find decoder video" << endl;
         exit(-1);
     }
+
+
     //pAVCodecContext = avcodec_alloc_context3(pAVCodec);
     //avcodec_parameters_to_context(pAVCodecContext, params);
 
@@ -266,7 +301,7 @@ int ScreenRecorder::initOutputFile() {
 
     /*===========================================================================*/
     this->generateVideoStream();
-    this->generateAudioStream();
+    //this->generateAudioStream();
 
     //create an empty video file
     if(!(outAVFormatContext->flags & AVFMT_NOFILE)){
