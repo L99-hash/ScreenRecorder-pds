@@ -812,6 +812,8 @@ int ScreenRecorder::captureVideoFrames() {
 
     AVPacket outPacket;
     int gotPicture;
+    time_t startTimer;
+    time(&startTimer);
 
     while(true){
 
@@ -970,7 +972,24 @@ int ScreenRecorder::captureVideoFrames() {
                     outFile << "outPacket->duration: " << outPacket.duration << ", " << "pAVPacket->duration: " << pAVPacket->duration << endl;
                     outFile << "outPacket->pts: " << outPacket.pts << ", " << "pAVPacket->pts: " << pAVPacket->pts << endl;
                     outFile << "outPacket.dts: " << outPacket.dts << ", " << "pAVPacket->dts: " << pAVPacket->dts << endl;
-                    
+
+
+                    time_t timer;
+                    struct tm y2k = {0};
+                    double seconds;
+
+                    time(&timer);  /* get current time; same as: timer = time(NULL)  */
+
+                    seconds = difftime(timer,startTimer);
+                    int h = int(seconds/3600);
+                    int m = int(seconds/60) % 60;
+                    int s = int(seconds) % 60;
+                    std::cout << '\r'
+                    << std::setw(2) << std::setfill('0') << h << ':'
+                    << std::setw(2) << std::setfill('0')  << m << ':'
+                    << std::setw(2) << std::setfill('0') << s << std::flush;
+
+
                     write_lock.lock();
                     if(av_write_frame(outAVFormatContext, &outPacket) != 0){
                         cerr << "Error in writing video frame" << endl;

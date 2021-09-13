@@ -51,9 +51,9 @@ int main() {
     ScreenRecorder screenRecorder;
 
     std::thread t_video, t_audio;
-
+    showCommands();
     while(!endWhile){
-        showCommands();
+
         std::cout << "\nInsert command: ";
         std::cin >> cmd;
 

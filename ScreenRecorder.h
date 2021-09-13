@@ -14,6 +14,7 @@
 #include <string.h>
 #include <condition_variable>
 #include <mutex>
+#include <time.h>
 
 #define __STDC_CONSTANT_MACROS
 
