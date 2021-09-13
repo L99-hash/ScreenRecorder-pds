@@ -50,6 +50,8 @@ extern "C"
     // lib swresample
 
 #include "libswscale/swscale.h"
+#include "libswresample/swresample.h"
+#include "libavutil/audio_fifo.h"
 }
 
 class ScreenRecorder {
@@ -60,23 +62,32 @@ class ScreenRecorder {
     AVCodec* pAVCodec;
     AVFormatContext* outAVFormatContext;
     char* outputFile;
-    AVOutputFormat* outputFormat;
+    AVOutputFormat* outputAVFormat;
     AVStream* videoSt;
-    AVCodecContext* outAVCodecContext;
-    AVCodec* outAVCodec;
+    AVCodecContext* outVideoCodecContext;
+    AVCodec* outVideoCodec;
     AVPacket* pAVPacket;
     AVFrame* pAVFrame;
     AVFrame* outFrame;
+    int outVideoStreamIndex;
 
     AVInputFormat* audioInputFormat;
-    AVFormatContext* audioFormatContext;
+    AVFormatContext* inAudioFormatContext;
+    AVCodecContext* inAudioCodecContext;
+    AVStream* audioSt;
+    AVCodecContext* outAudioCodecContext;
+    AVCodec* inAudioCodec;
+    AVCodec* outAudioCodec;
+    int outAudioStreamIndex;
+    AVAudioFifo* fifo;
+    AVDictionary* audioOptions;
 
 
     int value;   //used for checking values returned from various functions
     int codec_id;
     int out_size;
     int VideoStreamIndx;
-    int AudioStreamIndx;
+    int audioStreamIndx;
     double video_pts;
     const char* dev_name;
 
@@ -85,14 +96,27 @@ class ScreenRecorder {
 public:
     std::condition_variable cv;
     std::mutex mu;
+    std::mutex write_lock;
     bool stopCapture;
     bool pauseCapture;
-
+    bool started = false;
     ScreenRecorder();
     ~ScreenRecorder();
-    int openDevice() throw();
+    int openVideoDevice() throw();
     int initOutputFile();
     int captureVideoFrames();
+    void captureAudio();
+    int initConvertedSamples(uint8_t*** converted_input_samples, AVCodecContext* output_codec_context, int frame_size);
+    int add_samples_to_fifo(uint8_t** converted_input_samples, const int frame_size);
+    int init_fifo();
+    int openAudioDevice();
+
+    void generateVideoStream();
+
+    void generateAudioStream();
+    void setStarted(bool val) {
+        started = val;
+    }
 };
 
 

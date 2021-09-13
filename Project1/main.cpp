@@ -17,7 +17,7 @@ void stopCommand(ScreenRecorder& sr) {
     sr.stopCapture = true;
     if (sr.pauseCapture)
         sr.pauseCapture = false;
-    sr.cv.notify_one();
+    sr.cv.notify_all();
 }
 
 void pauseCommand(ScreenRecorder& sr) {
@@ -30,57 +30,94 @@ void resumeCommand(ScreenRecorder& sr) {
     std::unique_lock<std::mutex> ul(sr.mu);
     if (sr.pauseCapture) {
         sr.pauseCapture = false;
-        sr.cv.notify_one();
+        sr.cv.notify_all();
     }
 }
 
+void showCommands() {
+    std::cout << "Commands: " << std::endl;
+    std::cout << "start --> begin registration" << std::endl;
+    std::cout << "pause --> pause registration" << std::endl;
+    std::cout << "resume --> resume registration after pause" << std::endl;
+    std::cout << "stop --> stop registration" << std::endl;
+}
 int main() {
     std::string cmd;
     bool endWhile = false;
     bool started = false;
+    bool inPause = false;
+
 
     ScreenRecorder screenRecorder;
-    try {
-        screenRecorder.openDevice();
-    }
-    catch (std::exception& e) {
-        std::cout << e.what() << std::endl;
-        exit(-1);
-    }
 
-    std::thread t;
+    std::thread t_video, t_audio;
 
     while (!endWhile) {
-        std::cout << "Insert command: ";
+        showCommands();
+        std::cout << "\nInsert command: ";
         std::cin >> cmd;
 
         Command c = stringToInt(cmd);
 
         switch (c) {
         case stop:
-            stopCommand(screenRecorder);
+            if (started) {
+                stopCommand(screenRecorder);
+            }
+
             endWhile = true;
+
             break;
         case start:
-            started = true;
-            t = std::move(std::thread{ [&screenRecorder]() {
+            if (!started) {
+                started = true;
+                screenRecorder.setStarted(started);
+                screenRecorder.openAudioDevice();
+                screenRecorder.openVideoDevice();
                 screenRecorder.initOutputFile();
-                screenRecorder.captureVideoFrames();
-            } });
-            break;
+                t_video = std::move(std::thread{ [&screenRecorder]() {
+                    screenRecorder.captureVideoFrames();
+                } });
+                t_audio = std::move(std::thread{ [&screenRecorder](){
+                    screenRecorder.captureAudio();
+                } });
+                break;
+            }
+            else {
+                std::cout << "Already started." << std::endl;
+                showCommands();
+            }
+
         case pause:
-            pauseCommand(screenRecorder);
+            if (started) {
+                pauseCommand(screenRecorder);
+                inPause = true;
+            }
+            else {
+                std::cout << "Not yet started!" << std::endl;
+                showCommands();
+            }
             break;
         case resume:
-            resumeCommand(screenRecorder);
+            if (inPause) {
+                inPause = false;
+                resumeCommand(screenRecorder);
+            }
+            else {
+                std::cout << "Not in pause!" << std::endl;
+                showCommands();
+            }
             break;
         default:
-            std::cout << "Command: " << cmd << " does not exist" << std::endl;
+            std::cout << "Command: " << "\"" << cmd << "\"" << " does not exist" << std::endl;
+            showCommands();
             break;
         }
     }
 
-    if (started)
-        t.join();
+    if (started) {
+        t_video.join();
+        t_audio.join();
+    }
     return 0;
 }
