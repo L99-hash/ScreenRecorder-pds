@@ -91,6 +91,9 @@ int ScreenRecorder::openVideoDevice() throw(){
 
     pAVFormatContext = avformat_alloc_context();
 
+    string dimension = to_string(width) + "x" + to_string(height);
+    av_dict_set(&options,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
+
     #ifdef _WIN32
     AVDictionary* opt = nullptr;
     pAVInputFormat = av_find_input_format("gdigrab");
@@ -124,7 +127,7 @@ int ScreenRecorder::openVideoDevice() throw(){
     //string dimension = to_string(width) + "x" + to_string(height);
     //av_dict_set(&opt,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
     pAVInputFormat = av_find_input_format("x11grab");
-    value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &opt);
+    value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &options);
 
     if(value !=0 ){
         cerr << "Error in opening input device (video)" << endl;
@@ -132,11 +135,11 @@ int ScreenRecorder::openVideoDevice() throw(){
         //throw error("Error in opening input device");
     }
     //get video stream infos from context
-    value = avformat_find_stream_info(pAVFormatContext, nullptr);
+    /*value = avformat_find_stream_info(pAVFormatContext, nullptr);
     if (value < 0) {
         cout << "\nCannot find the stream information";
         exit(1);
-    }
+    }*/
 #else
 
     show_avfoundation_device();
@@ -163,9 +166,6 @@ int ScreenRecorder::openVideoDevice() throw(){
 
 
 #endif
-
-    string dimension = to_string(width) + "x" + to_string(height);
-    av_dict_set(&options,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
     //set frame per second
 
     value = av_dict_set(&options, "framerate", "30", 0);
@@ -193,8 +193,8 @@ int ScreenRecorder::openVideoDevice() throw(){
         exit(-1);
     }
 
+    //get video stream infos from context
     value = avformat_find_stream_info(pAVFormatContext, nullptr);
-
     if(value < 0){
         cerr << "Error in retrieving the stream info" << endl;
         exit(-1);
