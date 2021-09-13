@@ -72,15 +72,15 @@ int main() {
                 if(!started){
                     started =  true;
                     screenRecorder.setStarted(started);
-                    //screenRecorder.openAudioDevice();
+                    screenRecorder.openAudioDevice();
                     screenRecorder.openVideoDevice();
                     screenRecorder.initOutputFile();
                     t_video = std::move(std::thread{ [&screenRecorder](){
                         screenRecorder.captureVideoFrames();
                     } });
-                    /*t_audio = std::move(std::thread{ [&screenRecorder](){
+                    t_audio = std::move(std::thread{ [&screenRecorder](){
                         screenRecorder.captureAudio();
-                    } });*/
+                    } });
                     break;
                 }
                 else{
@@ -117,7 +117,7 @@ int main() {
 
     if(started){
         t_video.join();
-        //t_audio.join();
+        t_audio.join();
     }
     return 0;
 }

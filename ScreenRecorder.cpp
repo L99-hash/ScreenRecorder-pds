@@ -47,7 +47,7 @@ ScreenRecorder::~ScreenRecorder(){
             exit(-1);
         }
 
-        /*avformat_close_input(&inAudioFormatContext);
+        avformat_close_input(&inAudioFormatContext);
         if(inAudioFormatContext == nullptr){
             cout << "inAudioFormatContext close successfully" << endl;
         }
@@ -65,7 +65,7 @@ ScreenRecorder::~ScreenRecorder(){
             cerr << "Error: unable to free AudioFormatContext" << endl;
             exit(-1);
         }
-        */
+        
         avformat_close_input(&pAVFormatContext);
         if(pAVFormatContext == nullptr){
             cout << "File close successfully" << endl;
@@ -306,7 +306,7 @@ int ScreenRecorder::initOutputFile() {
 
     /*===========================================================================*/
     this->generateVideoStream();
-    //this->generateAudioStream();
+    this->generateAudioStream();
 
     //create an empty video file
     if(!(outAVFormatContext->flags & AVFMT_NOFILE)){
