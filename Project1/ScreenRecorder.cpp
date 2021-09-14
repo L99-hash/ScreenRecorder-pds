@@ -46,8 +46,8 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 1920;//640;
-    height = 1104;//480;
+    width = 3840; // 1920;//640;
+    height = 2160;// 1104;//480;
 }
 
 ScreenRecorder::~ScreenRecorder() {
@@ -284,7 +284,7 @@ int ScreenRecorder::openAudioDevice() {
     show_dshow_device();
 
     audioInputFormat = av_find_input_format("dshow");
-    value = avformat_open_input(&inAudioFormatContext, "audio=Microfono (Realtek(R) Audio)", audioInputFormat, &audioOptions);
+    value = avformat_open_input(&inAudioFormatContext, "audio=Microphone (Realtek High Definition Audio)", audioInputFormat, &audioOptions);
     //audioInputFormat = av_find_input_format("pulse");
     //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
     if (value != 0) {

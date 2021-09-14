@@ -1,3 +1,24 @@
 ﻿  main.cpp
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\main.cpp(21,30): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-  Project1.vcxproj -> C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\bin\Project1.exe
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\main.cpp(21,30): warning C4267: 'inizializzazione': conversione da 'size_t' a 'int'. Possibile perdita di dati.
+  ScreenRecorder.cpp
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(46,5): warning C4996: 'avcodec_register_all': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(220,23): warning C4018: '<': errata corrispondenza tra signed e unsigned
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(231,65): warning C4996: 'AVStream::codec': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(304,23): warning C4018: '<': errata corrispondenza tra signed e unsigned
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(384,35): warning C4996: 'AVStream::codec': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(413,23): warning C4018: '<': errata corrispondenza tra signed e unsigned
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(497,19): warning C4018: '<': errata corrispondenza tra signed e unsigned
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(540,9): warning C4101: 'error': variabile locale senza riferimenti
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(577,5): warning C4996: 'av_init_packet': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(705,17): warning C4996: 'av_init_packet': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(964,76): warning C4996: 'AVStream::codec': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(967,76): warning C4996: 'AVStream::codec': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(938,21): warning C4996: 'avcodec_decode_video2': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(945,17): warning C4996: 'av_init_packet': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(960,17): warning C4996: 'avcodec_encode_video2': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(1006,17): warning C4996: 'av_free_packet': è stato dichiarato deprecato
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(804,9): warning C4101: 'videoOutBuffSize': variabile locale senza riferimenti
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(774,9): warning C4101: 'flag': variabile locale senza riferimenti
+  Generazione del codice in corso...
+C:\Users\Luca\Desktop\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(314): warning C4715: 'ScreenRecorder::openAudioDevice': non tutti i percorsi di controllo restituiscono un valore
+  Project1.vcxproj -> C:\Users\Luca\Desktop\ScreenRecorder-pds\bin\Project1.exe
