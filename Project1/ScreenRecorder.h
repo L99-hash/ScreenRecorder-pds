@@ -21,6 +21,11 @@
 #include <sstream>
 #include <iomanip>
 #include <functional>
+#if defined _WIN32
+#include <windows.h>
+#else
+#include <X11/Xlib.h>
+#endif
 
 #define __STDC_CONSTANT_MACROS
 
@@ -29,6 +34,7 @@ extern "C"
 {
 #include "libavcodec/avcodec.h"
 #include "libavcodec/avfft.h"
+#include "libavcodec/codec.h"
 
 #include "libavdevice/avdevice.h"
 
@@ -125,6 +131,8 @@ class ScreenRecorder {
     int height;
     int x_offset;
     int y_offset;
+    int screen_width;
+    int screen_height;
 
     std::thread t_audio;
     std::thread t_video;

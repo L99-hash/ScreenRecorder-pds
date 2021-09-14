@@ -42,12 +42,24 @@ void show_avfoundation_device() {
     printf("=============================\n");
 }
 
+void getScreenResolution(int& width, int& height) {
+#if defined _WIN32
+    width = (int)GetSystemMetrics(SM_CXSCREEN);
+    height = (int)GetSystemMetrics(SM_CYSCREEN);
+#else
+    Display* disp = XOpenDisplay(NULL);
+    Screen* scrn = DefaultScreenOfDisplay(disp);
+    width = scrn->width;
+    height = scrn->height;
+#endif
+}
+
 ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true), recordAudio(false), dir_path(nullptr) {
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 1920;//640;
-    height = 1140; // 1104;//480;
+    getScreenResolution(width, height);
+    getScreenResolution(screen_width, screen_height);
 
     x_offset = 0;
     y_offset = 0;
@@ -154,7 +166,7 @@ int ScreenRecorder::openVideoDevice() throw() {
         exit(-1);
     }
 
-    value = av_dict_set(&videoOptions, "preset", "medium", 0);
+    value = av_dict_set(&videoOptions, "preset", "fast", 0);
     if (value < 0) {
         cerr << "Error in setting dictionary value (setting preset value)" << endl;
         exit(-1);
@@ -406,50 +418,57 @@ void ScreenRecorder::startRecording() {
         cout << "Output direcotry not set. Set it before start recording." << endl;
         setActiveMenu(true);
         setStarted(false);
+        return;
     }
-    else {
-        if (recordAudio) openAudioDevice();
-        openVideoDevice();
-        initOutputFile();
-        t_video = std::move(std::thread{ [this]() {
-                        this->captureVideoFrames();
-                    }
-            });
-        if (recordAudio) {
-            t_audio = std::move(std::thread{ [this]() {
-                    this->captureAudio();
+
+    if ((width + x_offset) > screen_width || (height + y_offset) > screen_height) {
+        cout << "Diemensions of screen section setted are too large for the screen.";
+        setActiveMenu(true);
+        setStarted(false);
+        return;
+    }
+
+    if (recordAudio) openAudioDevice();
+    openVideoDevice();
+    initOutputFile();
+    t_video = std::move(std::thread{ [this]() {
+                    this->captureVideoFrames();
                 }
-            });
-        }
+        });
+    if (recordAudio) {
+        t_audio = std::move(std::thread{ [this]() {
+                this->captureAudio();
+            }
+        });
     }
 }
 
 /*===================================  VIDEO  ==================================*/
 
 void ScreenRecorder::generateVideoStream() {
-    //Generate video stream
-    videoSt = avformat_new_stream(outAVFormatContext, nullptr);
-    if (videoSt == nullptr) {
-        cerr << "Error in creating AVFormatStream" << endl;
-        exit(-6);
-    }
-
-    outVideoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);  //AV_CODEC_ID_MPEG4
+    outVideoCodec = avcodec_find_encoder(AV_CODEC_ID_H264);  //AV_CODEC_ID_MPEG4
     if (outVideoCodec == nullptr) {
         cerr << "Error in finding the AVCodec, try again with the correct codec" << endl;
         exit(-8);
     }
 
+    //Generate video stream
+    videoSt = avformat_new_stream(outAVFormatContext, outVideoCodec);
+    if (videoSt == nullptr) {
+        cerr << "Error in creating AVFormatStream" << endl;
+        exit(-6);
+    }
+
     //outVideoCodec = nullptr;   //avoid segmentation fault on call avcodec_alloc_context3(outAVCodec)
-    outVideoCodecContext = avcodec_alloc_context3(outVideoCodec);
+    /*outVideoCodecContext = avcodec_alloc_context3(outVideoCodec);
     if (outVideoCodecContext == nullptr) {
         cerr << "Error in allocating the codec context" << endl;
         exit(-7);
-    }
+    }*/
 
     //set properties of the video file (stream)
     outVideoCodecContext = videoSt->codec;
-    outVideoCodecContext->codec_id = AV_CODEC_ID_MPEG4;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
+    outVideoCodecContext->codec_id = AV_CODEC_ID_H264;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
     outVideoCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
     outVideoCodecContext->pix_fmt = AV_PIX_FMT_YUV420P;
     outVideoCodecContext->bit_rate = 10000000; //2500000;
@@ -463,7 +482,7 @@ void ScreenRecorder::generateVideoStream() {
     outVideoCodecContext->bit_rate_tolerance = 400000;
 
     if (outVideoCodecContext->codec_id == AV_CODEC_ID_H264) {
-        av_opt_set(outVideoCodecContext->priv_data, "preset", "slow", 0);
+        av_opt_set(outVideoCodecContext->priv_data, "preset", "fast", 0);
     }
 
     if (outAVFormatContext->oformat->flags & AVFMT_GLOBALHEADER) {
@@ -837,6 +856,8 @@ void ScreenRecorder::captureAudio() {
     av_free(audioOutBuff);*/
 }
 
+static int64_t ptsVideo = 0;
+
 int ScreenRecorder::captureVideoFrames() {
     int64_t pts = 0;
     int flag;
@@ -844,6 +865,7 @@ int ScreenRecorder::captureVideoFrames() {
     bool endPause = false;
     int numPause = 0;
 
+    int64_t numFrame = 0;
     ofstream outFile{ "..\\media\\log.txt", ios::out };
 
     int frameIndex = 0;
@@ -946,7 +968,7 @@ int ScreenRecorder::captureVideoFrames() {
         if (av_read_frame(pAVFormatContext, pAVPacket) >= 0 && pAVPacket->stream_index == VideoStreamIndx) {
             av_packet_rescale_ts(pAVPacket, pAVFormatContext->streams[VideoStreamIndx]->time_base, pAVCodecContext->time_base);
             /////////////////////////////////////////////////////////////////////
-            /*if((value = avcodec_send_packet(pAVCodecContext, pAVPacket)) < 0){
+            /*if ((value = avcodec_send_packet(pAVCodecContext, pAVPacket)) < 0) {
                 cout << "Cannot decode current video packet" << endl;
                 continue;
             }
@@ -1008,7 +1030,12 @@ int ScreenRecorder::captureVideoFrames() {
                 cout << "Unable to decode video" << endl;
             }
 
+            pAVFrame->pts = numFrame;
+
             if (frameFinished) { //frame successfully decoded
+
+                numFrame++;
+
                 //sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
                 av_init_packet(&outPacket);
                 outPacket.data = nullptr;
@@ -1023,22 +1050,25 @@ int ScreenRecorder::captureVideoFrames() {
                 outFrame->height = outVideoCodecContext->height;
                 outFrame->format = outVideoCodecContext->pix_fmt;
 
+                outFrame->pts = pAVFrame->pts;
                 sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
 
                 avcodec_encode_video2(outVideoCodecContext, &outPacket, outFrame, &gotPicture);
 
                 if (gotPicture) {
+                    /*
                     if (outPacket.pts != AV_NOPTS_VALUE) {
-                        outPacket.pts = av_rescale_q(outPacket.pts, videoSt->codec->time_base, videoSt->time_base);
+                        outPacket.pts = av_rescale_q(outPacket.pts, outVideoCodecContext->time_base, videoSt->time_base);
                     }
                     if (outPacket.dts != AV_NOPTS_VALUE) {
-                        outPacket.dts = av_rescale_q(outPacket.dts, videoSt->codec->time_base, videoSt->time_base);
+                        outPacket.dts = av_rescale_q(outPacket.dts, outVideoCodecContext->time_base, videoSt->time_base);
                     }
+                    */
 
                     //cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
                     //cout << "(size = " << outPacket.size << ")" << endl;
 
-                    //av_packet_rescale_ts(&outPacket, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
+                    av_packet_rescale_ts(&outPacket, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
                     //outPacket.stream_index = outVideoStreamIndex;
 
                     outFile << "outPacket->duration: " << outPacket.duration << ", " << "pAVPacket->duration: " << pAVPacket->duration << endl;
@@ -1055,10 +1085,11 @@ int ScreenRecorder::captureVideoFrames() {
                         int h = (int)(seconds / 3600);
                         int m = (int)(seconds / 60) % 60;
                         int s = (int)(seconds) % 60;
-
+                        /*
                         std::cout << std::flush << "\r" << std::setw(2) << std::setfill('0') << h << ':'
                             << std::setw(2) << std::setfill('0') << m << ':'
                             << std::setw(2) << std::setfill('0') << s << std::flush;
+                        */
                     }
                     mu.unlock();
 
