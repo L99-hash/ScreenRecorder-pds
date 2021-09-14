@@ -20,6 +20,7 @@
 #include <time.h>
 #include <sstream>
 #include <iomanip>
+#include <functional>
 
 #define __STDC_CONSTANT_MACROS
 
@@ -83,7 +84,7 @@ extern "C"
 class ScreenRecorder {
     AVInputFormat* pAVInputFormat;
     AVFormatContext* pAVFormatContext;
-    AVDictionary* options;
+    AVDictionary* videoOptions;
     AVCodecContext* pAVCodecContext;
     AVCodec* pAVCodec;
     AVFormatContext* outAVFormatContext;
@@ -109,6 +110,8 @@ class ScreenRecorder {
     AVDictionary* audioOptions;
 
 
+    bool recordAudio;
+
     int value;   //used for checking values returned from various functions
     int codec_id;
     int out_size;
@@ -119,6 +122,9 @@ class ScreenRecorder {
 
     int width;
     int height;
+
+    std::thread t_audio;
+    std::thread t_video;
     
 public:
    
@@ -139,6 +145,7 @@ public:
     int add_samples_to_fifo(uint8_t** converted_input_samples, const int frame_size);
     int init_fifo();
     int openAudioDevice();
+    void startRecording();
 
     void generateVideoStream();
 
@@ -153,6 +160,13 @@ public:
     void setActiveMenu(bool val) {
         std::lock_guard<std::mutex> lg(mu);
         activeMenu = val;
+    }
+
+    bool getRecordAudio() {
+        return recordAudio;
+    };
+    void setRecordAudio(bool val) {
+        recordAudio = val;
     }
 };
 

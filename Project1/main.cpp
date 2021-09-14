@@ -2,11 +2,10 @@
 #include "ScreenRecorder.h"
 #include <thread>
 #include <csignal>
-#include <functional>
 #include <vector>
 
-enum Command { stop, start, pause, resume, help };
-std::vector<std::string> commands{ "stop", "start", "pause", "resume", "help"};
+enum Command { stop, start, pause, resume, audio, help };
+std::vector<std::string> commands{ "stop", "start", "pause", "resume", "audio", "help"};
 
 ScreenRecorder screenRecorder;
 
@@ -90,19 +89,10 @@ int main() {
                 screenRecorder.setActiveMenu(false);
                 started = true;
                 screenRecorder.setStarted(started);
-                screenRecorder.openAudioDevice();
-                screenRecorder.openVideoDevice();
-                screenRecorder.initOutputFile();
-                t_video = std::move(std::thread{ 
-                    std::bind( [](ScreenRecorder &screenRecorder) {
-                        screenRecorder.captureVideoFrames();
-                    }, std::ref(screenRecorder) ) 
-                 });
-                t_audio = std::move(std::thread{
-                    std::bind([](ScreenRecorder &screenRecorder) {
-                        screenRecorder.captureAudio();
-                    }, std::ref(screenRecorder))
-                 });
+                //screenRecorder.openAudioDevice();
+                //screenRecorder.openVideoDevice();
+                //screenRecorder.initOutputFile();
+                screenRecorder.startRecording();
             }
             else {
                 std::cout << "Already started." << std::endl;
@@ -127,6 +117,9 @@ int main() {
                 std::cout << "Not in pause!" << std::endl;
             }
             break;
+        case audio:
+            screenRecorder.setRecordAudio(true);
+            break;
         case help:
             showCommands();
             break;
@@ -136,9 +129,9 @@ int main() {
         }
     }
 
-    if (started) {
+    /*if (started) {
         t_video.join();
         t_audio.join();
-    }
+    }*/
     return 0;
 }
