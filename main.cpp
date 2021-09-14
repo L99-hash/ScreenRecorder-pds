@@ -78,6 +78,7 @@ int main() {
                     t_video = std::move(std::thread{ [&screenRecorder](){
                         screenRecorder.captureVideoFrames();
                     } });
+
                     t_audio = std::move(std::thread{ [&screenRecorder](){
                         screenRecorder.captureAudio();
                     } });
@@ -117,6 +118,7 @@ int main() {
 
     if(started){
         t_video.join();
+
         t_audio.join();
     }
     return 0;

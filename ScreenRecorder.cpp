@@ -34,8 +34,8 @@ ScreenRecorder::ScreenRecorder(): stopCapture(false) , pauseCapture(false){
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 1920;//640;
-    height = 1104;//480;
+    width = 2880;//640;
+    height = 1800;//480;
 }
 
 ScreenRecorder::~ScreenRecorder(){
@@ -179,7 +179,7 @@ int ScreenRecorder::openVideoDevice() throw(){
         exit(-1);
     }
 
-    value = av_dict_set(&options, "preset", "medium", 0);
+    value = av_dict_set(&options, "preset", "fast", 0);
     if(value < 0){
         cerr << "Error in setting dictionary value (setting preset value)" << endl;
         exit(-1);
@@ -341,17 +341,19 @@ int ScreenRecorder::initOutputFile() {
 
 void ScreenRecorder::generateVideoStream(){
     //Generate video stream
-    videoSt = avformat_new_stream(outAVFormatContext, nullptr);
+
+
+    outVideoCodec = avcodec_find_encoder(AV_CODEC_ID_H264);  //AV_CODEC_ID_MPEG4
+    if(outVideoCodec == nullptr){
+        cerr << "Error in finding the AVCodec, try again with the correct codec" << endl;
+        exit(-8);
+    }
+    videoSt = avformat_new_stream(outAVFormatContext, outVideoCodec);
     if(videoSt == nullptr){
         cerr << "Error in creating AVFormatStream" << endl;
         exit(-6);
     }
 
-    outVideoCodec = avcodec_find_encoder(AV_CODEC_ID_MPEG4);  //AV_CODEC_ID_MPEG4
-    if(outVideoCodec == nullptr){
-        cerr << "Error in finding the AVCodec, try again with the correct codec" << endl;
-        exit(-8);
-    }
 
     //outVideoCodec = nullptr;   //avoid segmentation fault on call avcodec_alloc_context3(outAVCodec)
     outVideoCodecContext = avcodec_alloc_context3(outVideoCodec);
@@ -362,7 +364,7 @@ void ScreenRecorder::generateVideoStream(){
 
     //set properties of the video file (stream)
     outVideoCodecContext = videoSt->codec;
-    outVideoCodecContext->codec_id = AV_CODEC_ID_MPEG4;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
+    outVideoCodecContext->codec_id = AV_CODEC_ID_H264;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
     outVideoCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
     outVideoCodecContext->pix_fmt  = AV_PIX_FMT_YUV420P;
     outVideoCodecContext->bit_rate = 10000000; //2500000;
@@ -376,7 +378,7 @@ void ScreenRecorder::generateVideoStream(){
     outVideoCodecContext->bit_rate_tolerance = 400000;
 
     if(outVideoCodecContext->codec_id == AV_CODEC_ID_H264){
-        av_opt_set(outVideoCodecContext->priv_data, "preset", "slow", 0);
+        av_opt_set(outVideoCodecContext->priv_data, "preset", "fast", 0);
     }
 
     if(outAVFormatContext->oformat->flags & AVFMT_GLOBALHEADER){
@@ -756,13 +758,14 @@ void ScreenRecorder::captureAudio() {
     av_free(audioOutBuff);*/
 }
 
+static int64_t ptsVideo = 0;
 int ScreenRecorder::captureVideoFrames() {
-    int64_t pts = 0;
+
     int flag;
     int frameFinished = 0;
     bool endPause = false;
     int numPause = 0;
-
+    int64_t numFrame = 0;
     ofstream outFile{"media/log.txt", ios::out};
 
     int frameIndex = 0;
@@ -931,12 +934,17 @@ int ScreenRecorder::captureVideoFrames() {
                 av_free_packet(pAVPacket);
             }*/
             //////////////////////////////////////////////////////////////////////
+
             value = avcodec_decode_video2(pAVCodecContext, pAVFrame, &frameFinished, pAVPacket);
+            //pAVFrame->pts = ptsVideo;
+            //ptsVideo = pAVFrame->best_effort_timestamp;
             if(value < 0){
                 cout << "Unable to decode video" << endl;
             }
+            pAVFrame->pts =  numFrame;
 
             if(frameFinished) { //frame successfully decoded
+                numFrame++;
                 //sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
                 av_init_packet(&outPacket);
                 outPacket.data = nullptr;
@@ -950,29 +958,33 @@ int ScreenRecorder::captureVideoFrames() {
                 outFrame->width = outVideoCodecContext->width;
                 outFrame->height = outVideoCodecContext->height;
                 outFrame->format = outVideoCodecContext->pix_fmt;
-
+                outFrame->pts = pAVFrame->pts;
                 sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
+
+
 
                 avcodec_encode_video2(outVideoCodecContext, &outPacket, outFrame, &gotPicture);
 
                 if(gotPicture){
+
+                    /*
                     if(outPacket.pts != AV_NOPTS_VALUE){
-                        outPacket.pts = av_rescale_q(outPacket.pts, videoSt->codec->time_base, videoSt->time_base);
+                        outPacket.pts = av_rescale_q(outPacket.pts, outVideoCodecContext->time_base, videoSt->time_base);
                     }
                     if(outPacket.dts != AV_NOPTS_VALUE){
-                        outPacket.dts = av_rescale_q(outPacket.dts, videoSt->codec->time_base, videoSt->time_base);
+                        outPacket.dts = av_rescale_q(outPacket.dts, outVideoCodecContext->time_base, videoSt->time_base);
                     }
-                    
+                    */
                     //cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
                     //cout << "(size = " << outPacket.size << ")" << endl;
 
-                    //av_packet_rescale_ts(&outPacket, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
+                    av_packet_rescale_ts(&outPacket, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
                     //outPacket.stream_index = outVideoStreamIndex;
-                    
+
                     outFile << "outPacket->duration: " << outPacket.duration << ", " << "pAVPacket->duration: " << pAVPacket->duration << endl;
                     outFile << "outPacket->pts: " << outPacket.pts << ", " << "pAVPacket->pts: " << pAVPacket->pts << endl;
                     outFile << "outPacket.dts: " << outPacket.dts << ", " << "pAVPacket->dts: " << pAVPacket->dts << endl;
-
+                    outFile << "outFrame->pts: " << outFrame->pts << endl;
 
                     time_t timer;
                     struct tm y2k = {0};
@@ -984,11 +996,12 @@ int ScreenRecorder::captureVideoFrames() {
                     int h = int(seconds/3600);
                     int m = int(seconds/60) % 60;
                     int s = int(seconds) % 60;
+                    /*
                     std::cout << '\r'
                     << std::setw(2) << std::setfill('0') << h << ':'
                     << std::setw(2) << std::setfill('0')  << m << ':'
                     << std::setw(2) << std::setfill('0') << s << std::flush;
-
+                    */
 
                     write_lock.lock();
                     if(av_write_frame(outAVFormatContext, &outPacket) != 0){
