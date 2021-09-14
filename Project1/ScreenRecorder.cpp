@@ -47,7 +47,10 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avdevice_register_all();
 
     width = 1920;//640;
-    height = 1200; // 1104;//480;
+    height = 1140; // 1104;//480;
+
+    x_offset = 0;
+    y_offset = 0;
 }
 
 ScreenRecorder::~ScreenRecorder() {
@@ -124,6 +127,16 @@ void ScreenRecorder::resumeCommand() {
     }
 }
 
+void ScreenRecorder::setScreenDimension(int width, int height){
+    this->width = width;
+    this->height = height;
+}
+
+void ScreenRecorder::setScreenOffset(int x_offset, int y_offset) {
+    this->x_offset = x_offset;
+    this->y_offset = y_offset;
+}
+
 /*==================================== VIDEO ==============================*/
 
 int ScreenRecorder::openVideoDevice() throw() {
@@ -152,9 +165,9 @@ int ScreenRecorder::openVideoDevice() throw() {
     //Set some options
     //grabbing frame rate
     //The distance from the left edge of the screen or desktop
-    av_dict_set(&videoOptions,"offset_x","0",0);
+    av_dict_set(&videoOptions,"offset_x",to_string(x_offset).c_str(), 0);
     //The distance from the top edge of the screen or desktop
-    av_dict_set(&videoOptions,"offset_y","0",0);
+    av_dict_set(&videoOptions,"offset_y",to_string(y_offset).c_str(), 0);
     //Video frame size. The default is to capture the full screen
     //av_dict_set(&options,"video_size","640x480",0);
 
@@ -174,8 +187,8 @@ int ScreenRecorder::openVideoDevice() throw() {
     //av_dict_set(&opt, "offset_x", "20", 0);
     //av_dict_set(&opt, "offset_y", "20", 0);
     //AVDictionary* opt = nullptr;
-    int offset_x = 0, offset_y = 0;
-    string url = ":0.0+" + to_string(offset_x) + "," + to_string(offset_y);  //custom string to set the start point of the screen section
+    //int offset_x = 0, offset_y = 0;
+    string url = ":0.0+" + to_string(x_offset) + "," + to_string(y_offset);  //custom string to set the start point of the screen section
     //string dimension = to_string(width) + "x" + to_string(height);
     //av_dict_set(&opt,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
     pAVInputFormat = av_find_input_format("x11grab");
@@ -195,6 +208,10 @@ int ScreenRecorder::openVideoDevice() throw() {
 #else
 
     show_avfoundation_device();
+    //The distance from the left edge of the screen or desktop
+    av_dict_set(&videoOptions, "offset_x", to_string(x_offset).c_str(), 0);
+    //The distance from the top edge of the screen or desktop
+    av_dict_set(&videoOptions, "offset_y", to_string(y_offset).c_str(), 0);
     value = av_dict_set(&videoOptions, "pixel_format", "0rgb", 0);
     if (value < 0) {
         cerr << "Error in setting pixel format" << endl;

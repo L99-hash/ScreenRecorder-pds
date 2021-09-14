@@ -123,6 +123,8 @@ class ScreenRecorder {
 
     int width;
     int height;
+    int x_offset;
+    int y_offset;
 
     std::thread t_audio;
     std::thread t_video;
@@ -150,6 +152,8 @@ public:
     void stopCommand();
     void pauseCommand();
     void resumeCommand();
+    void setScreenDimension(int width, int height);
+    void setScreenOffset(int x_offset, int y_offset);
 
     void generateVideoStream();
 

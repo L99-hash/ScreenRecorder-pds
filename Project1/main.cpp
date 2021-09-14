@@ -4,8 +4,8 @@
 #include <csignal>
 #include <vector>
 
-enum Command { stop, start, pause, resume, audio, out, help };
-std::vector<std::string> commands{ "stop", "start", "pause", "resume", "audio", "out", "help"};
+enum Command { stop, start, pause, resume, audio, out, dim, offset, help };
+std::vector<std::string> commands{ "stop", "start", "pause", "resume", "audio", "out", "dim", "offset", "help"};
 
 ScreenRecorder screenRecorder;
 
@@ -30,10 +30,12 @@ void showCommands() {
     std::cout << "pause --> pause registration" << std::endl;
     std::cout << "resume --> resume registration after pause" << std::endl;
     std::cout << "stop --> stop registration" << std::endl;
+    std::cout << "out --> set output direcotry (relative or absolute path)" << std::endl;
     std::cout << "help --> show all commands" << std::endl;
 }
 int main() {
     std::string cmd, dir;
+    int w, h, x_off, y_off;
     bool endWhile = false;
     bool started = false;
     bool inPause = false;
@@ -96,6 +98,18 @@ int main() {
             std::cout << "Insert path of output directory: ";
             std::cin >> dir;
             screenRecorder.setOutputDir(const_cast<char *>(dir.c_str()));
+            break;
+        case dim:
+            std::cout << "Insert dimension of screen to record [width heigth]: ";
+            std::cin >> w >> h;
+            screenRecorder.setScreenDimension(w, h);
+            std::cin.clear();
+            break;
+        case offset:
+            std::cout << "Insert dimension of offset screen to record [x_offset y_offset]: ";
+            std::cin >> x_off >> y_off;
+            screenRecorder.setScreenOffset(x_off, y_off);
+            std::cin.clear();
             break;
         default:
             std::cout << "Command: " << "\"" << cmd << "\"" << " does not exist" << std::endl;
