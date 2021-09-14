@@ -46,8 +46,8 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 3840; // 1920;//640;
-    height = 2160;// 1104;//480;
+    width = 640; // 1920;//640;
+    height = 480; //1104;//480;
 }
 
 ScreenRecorder::~ScreenRecorder() {
@@ -115,7 +115,6 @@ int ScreenRecorder::openVideoDevice() throw() {
     pAVInputFormat = av_find_input_format("gdigrab");
     //Set some options
     //grabbing frame rate
-    //av_dict_set(&options,"framerate","5",0);
     //The distance from the left edge of the screen or desktop
     //av_dict_set(&options,"offset_x","20",0);
     //The distance from the top edge of the screen or desktop
@@ -745,6 +744,7 @@ void ScreenRecorder::captureAudio() {
                         outPacket->stream_index = outAudioStreamIndex;
 
                         write_lock.lock();
+                        
                         if (av_write_frame(outAVFormatContext, outPacket) != 0)
                         {
                             cerr << "Error in writing audio frame" << endl;
