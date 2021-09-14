@@ -15,6 +15,11 @@
 #include <string.h>
 #include <condition_variable>
 #include <mutex>
+#include <exception>
+#include <string>
+#include <time.h>
+#include <sstream>
+#include <iomanip>
 
 #define __STDC_CONSTANT_MACROS
 
@@ -119,6 +124,8 @@ public:
     std::mutex mu;
     std::mutex write_lock;
     bool pauseCapture;
+    bool stopCapture;
+    bool activeMenu;
     bool started = false;
     ScreenRecorder();
     ~ScreenRecorder();
@@ -136,6 +143,14 @@ public:
     void generateAudioStream();
     void setStarted(bool val) {
         started = val;
+    }
+    bool getActiveMenu() {
+        std::lock_guard<std::mutex> lg(mu);
+        return activeMenu;
+    }
+    void setActiveMenu(bool val) {
+        std::lock_guard<std::mutex> lg(mu);
+        activeMenu = val;
     }
 };
 

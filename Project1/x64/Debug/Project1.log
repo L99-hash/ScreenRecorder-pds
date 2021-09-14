@@ -1,21 +1,3 @@
-﻿  ScreenRecorder.cpp
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(63,5): warning C4996: 'avcodec_register_all': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(240,23): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(251,65): warning C4996: 'AVStream::codec': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(324,23): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(404,35): warning C4996: 'AVStream::codec': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(433,23): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(517,19): warning C4018: '<': signed/unsigned mismatch
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(560,9): warning C4101: 'error': unreferenced local variable
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(597,5): warning C4996: 'av_init_packet': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(725,17): warning C4996: 'av_init_packet': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(984,76): warning C4996: 'AVStream::codec': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(987,76): warning C4996: 'AVStream::codec': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(958,21): warning C4996: 'avcodec_decode_video2': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(965,17): warning C4996: 'av_init_packet': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(980,17): warning C4996: 'avcodec_encode_video2': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(1024,17): warning C4996: 'av_free_packet': was declared deprecated
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(824,9): warning C4101: 'videoOutBuffSize': unreferenced local variable
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(794,9): warning C4101: 'flag': unreferenced local variable
-C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\ScreenRecorder.cpp(334): warning C4715: 'ScreenRecorder::openAudioDevice': not all control paths return a value
+﻿  main.cpp
+C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\Project1\main.cpp(21,30): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
   Project1.vcxproj -> C:\Users\Enrico\Documents\Polito\programmazione_di_sistema\API\ScreenRecorder-pds\bin\Project1.exe

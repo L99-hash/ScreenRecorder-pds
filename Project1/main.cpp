@@ -1,12 +1,25 @@
 #include <iostream>
 #include "ScreenRecorder.h"
 #include <thread>
+#include <csignal>
+#include <functional>
+#include <vector>
 
-enum Command { stop, start, pause, resume };
-std::string commands[10] = { "stop", "start", "pause", "resume" };
+enum Command { stop, start, pause, resume, help };
+std::vector<std::string> commands{ "stop", "start", "pause", "resume", "help"};
+
+ScreenRecorder screenRecorder;
+
+void stopSignalHandler(int signum) {
+    std::cout << "\nInterrupt signal (" << signum << ") received.\n";
+    std::cout << "\nInsert command: ";
+
+    screenRecorder.setActiveMenu(true);
+}
 
 Command stringToInt(std::string cmd) {
-    for (int i = 0; i < commands->length(); i++)
+    int len = commands.size();
+    for (int i = 0; i < len; i++)
         if (cmd == commands[i])
             return static_cast<Command>(i);
     return static_cast<Command>(-1);
@@ -14,7 +27,7 @@ Command stringToInt(std::string cmd) {
 
 void stopCommand(ScreenRecorder& sr) {
     std::unique_lock<std::mutex> ul(sr.mu);
-    //sr.stopCapture = true;
+    sr.stopCapture = true;
     if (sr.pauseCapture)
         sr.pauseCapture = false;
     sr.cv.notify_all();
@@ -40,6 +53,7 @@ void showCommands() {
     std::cout << "pause --> pause registration" << std::endl;
     std::cout << "resume --> resume registration after pause" << std::endl;
     std::cout << "stop --> stop registration" << std::endl;
+    std::cout << "help --> show all commands" << std::endl;
 }
 int main() {
     std::string cmd;
@@ -47,17 +61,16 @@ int main() {
     bool started = false;
     bool inPause = false;
 
-
-    ScreenRecorder screenRecorder;
+    // register signal SIGINT and signal handler  
+    signal(SIGINT, stopSignalHandler);
 
     std::thread t_video, t_audio;
 
     showCommands();
 
-    //while (!endWhile) {
-        std::cout << "\nInsert command: ";
+    while (!endWhile) {
+        if(screenRecorder.getActiveMenu()) std::cout << "\nInsert command: ";
         std::cin >> cmd;
-
         Command c = stringToInt(cmd);
 
         switch (c) {
@@ -70,24 +83,29 @@ int main() {
 
             break;
         case start:
+            std::cin.clear();
             if (!started) {
+                screenRecorder.setActiveMenu(false);
                 started = true;
                 screenRecorder.setStarted(started);
                 screenRecorder.openAudioDevice();
                 screenRecorder.openVideoDevice();
                 screenRecorder.initOutputFile();
-                t_video = std::move(std::thread{ [&screenRecorder]() {
-                    screenRecorder.captureVideoFrames();
-                } });
-                t_audio = std::move(std::thread{ [&screenRecorder](){
-                    screenRecorder.captureAudio();
-                } });
-                break;
+                t_video = std::move(std::thread{ 
+                    std::bind( [](ScreenRecorder &screenRecorder) {
+                        screenRecorder.captureVideoFrames();
+                    }, std::ref(screenRecorder) ) 
+                 });
+                t_audio = std::move(std::thread{
+                    std::bind([](ScreenRecorder &screenRecorder) {
+                        screenRecorder.captureAudio();
+                    }, std::ref(screenRecorder))
+                 });
             }
             else {
                 std::cout << "Already started." << std::endl;
             }
-
+            break;
         case pause:
             if (started) {
                 pauseCommand(screenRecorder);
@@ -99,6 +117,7 @@ int main() {
             break;
         case resume:
             if (inPause) {
+                screenRecorder.setActiveMenu(false);
                 inPause = false;
                 resumeCommand(screenRecorder);
             }
@@ -106,11 +125,14 @@ int main() {
                 std::cout << "Not in pause!" << std::endl;
             }
             break;
+        case help:
+            showCommands();
+            break;
         default:
             std::cout << "Command: " << "\"" << cmd << "\"" << " does not exist" << std::endl;
             break;
         }
-    //}
+    }
 
     if (started) {
         t_video.join();

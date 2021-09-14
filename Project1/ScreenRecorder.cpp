@@ -3,27 +3,10 @@
 //
 
 #include "ScreenRecorder.h"
-#include <exception>
-#include <string>
-#include <time.h>
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <csignal>
 
 using namespace std;
 
-atomic<bool> stopCapture{ false };
-
-void stopSignalHandler(int signum) {
-    cout << "\nInterrupt signal (" << signum << ") received.\n";
-
-    // cleanup and close up stuff here  
-    // terminate program  
-
-    //exit(signum);
-    stopCapture.store(true);
-}
+//atomic<bool> activeMenu{ false };
 
 class error : exception {
 private:
@@ -59,12 +42,9 @@ void show_avfoundation_device() {
     printf("=============================\n");
 }
 
-ScreenRecorder::ScreenRecorder() : pauseCapture(false) {
+ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true) {
     avcodec_register_all();
     avdevice_register_all();
-
-    // register signal SIGINT and signal handler  
-   signal(SIGINT, stopSignalHandler);
 
     width = 1920;//640;
     height = 1104;//480;
@@ -849,7 +829,7 @@ int ScreenRecorder::captureVideoFrames() {
     time_t startTime;
     time(&startTime);
 
-    while (!stopCapture.load()) {
+    while (true) {
 
         unique_lock<mutex> ul(mu);
         //ul.unlock();
@@ -1000,7 +980,8 @@ int ScreenRecorder::captureVideoFrames() {
                     time_t timer;
                     double seconds;
 
-                    if (!stopCapture.load()) {
+                    mu.lock();
+                    if (!activeMenu) {
                         time(&timer);
                         seconds = difftime(timer, startTime);
                         int h = (int)(seconds / 3600);
@@ -1011,6 +992,7 @@ int ScreenRecorder::captureVideoFrames() {
                             << std::setw(2) << std::setfill('0') << m << ':'
                             << std::setw(2) << std::setfill('0') << s << std::flush;
                     }
+                    mu.unlock();
 
                     write_lock.lock();
                     if (av_write_frame(outAVFormatContext, &outPacket) != 0) {
