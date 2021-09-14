@@ -46,8 +46,8 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 1920;//640;
-    height = 1104;//480;
+    width = 300;//640;
+    height = 120; // 1104;//480;
 }
 
 ScreenRecorder::~ScreenRecorder() {
