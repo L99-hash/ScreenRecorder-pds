@@ -146,6 +146,9 @@ public:
     int init_fifo();
     int openAudioDevice();
     void startRecording();
+    void stopCommand();
+    void pauseCommand();
+    void resumeCommand();
 
     void generateVideoStream();
 

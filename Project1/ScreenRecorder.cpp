@@ -46,8 +46,8 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avcodec_register_all();
     avdevice_register_all();
 
-    width = 300;//640;
-    height = 120; // 1104;//480;
+    width = 1920;//640;
+    height = 1200; // 1104;//480;
 }
 
 ScreenRecorder::~ScreenRecorder() {
@@ -99,6 +99,28 @@ ScreenRecorder::~ScreenRecorder() {
         t_video.join();
         if (recordAudio)
             t_audio.join();
+    }
+}
+
+void ScreenRecorder::stopCommand() {
+    unique_lock<mutex> ul(mu);
+    stopCapture = true;
+    if (pauseCapture)
+        pauseCapture = false;
+    cv.notify_all();
+}
+
+void ScreenRecorder::pauseCommand() {
+    unique_lock<mutex> ul(mu);
+    if (!pauseCapture)
+        pauseCapture = true;
+}
+
+void ScreenRecorder::resumeCommand() {
+    unique_lock<mutex> ul(mu);
+    if (pauseCapture) {
+        pauseCapture = false;
+        cv.notify_all();
     }
 }
 

@@ -24,28 +24,6 @@ Command stringToInt(std::string cmd) {
     return static_cast<Command>(-1);
 }
 
-void stopCommand(ScreenRecorder& sr) {
-    std::unique_lock<std::mutex> ul(sr.mu);
-    sr.stopCapture = true;
-    if (sr.pauseCapture)
-        sr.pauseCapture = false;
-    sr.cv.notify_all();
-}
-
-void pauseCommand(ScreenRecorder& sr) {
-    std::unique_lock<std::mutex> ul(sr.mu);
-    if (!sr.pauseCapture)
-        sr.pauseCapture = true;
-}
-
-void resumeCommand(ScreenRecorder& sr) {
-    std::unique_lock<std::mutex> ul(sr.mu);
-    if (sr.pauseCapture) {
-        sr.pauseCapture = false;
-        sr.cv.notify_all();
-    }
-}
-
 void showCommands() {
     std::cout << "Commands: " << std::endl;
     std::cout << "start --> begin registration" << std::endl;
@@ -60,11 +38,6 @@ int main() {
     bool started = false;
     bool inPause = false;
 
-    // register signal SIGINT and signal handler  
-    
-
-    std::thread t_video, t_audio;
-
     showCommands();
 
     while (!endWhile) {
@@ -77,21 +50,17 @@ int main() {
             
         case stop:
             if (started) {
-                stopCommand(screenRecorder);
+                screenRecorder.stopCommand();
             }
 
             endWhile = true;
 
             break;
         case start:
-            //std::cin.clear();
             if (!started) {
                 screenRecorder.setActiveMenu(false);
                 started = true;
                 screenRecorder.setStarted(started);
-                //screenRecorder.openAudioDevice();
-                //screenRecorder.openVideoDevice();
-                //screenRecorder.initOutputFile();
                 screenRecorder.startRecording();
             }
             else {
@@ -100,7 +69,7 @@ int main() {
             break;
         case pause:
             if (started) {
-                pauseCommand(screenRecorder);
+                screenRecorder.pauseCommand();
                 inPause = true;
             }
             else {
@@ -111,7 +80,7 @@ int main() {
             if (inPause) {
                 screenRecorder.setActiveMenu(false);
                 inPause = false;
-                resumeCommand(screenRecorder);
+                screenRecorder.resumeCommand();
             }
             else {
                 std::cout << "Not in pause!" << std::endl;
@@ -128,10 +97,5 @@ int main() {
             break;
         }
     }
-
-    /*if (started) {
-        t_video.join();
-        t_audio.join();
-    }*/
     return 0;
 }
