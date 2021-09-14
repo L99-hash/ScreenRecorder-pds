@@ -42,7 +42,7 @@ void show_avfoundation_device() {
     printf("=============================\n");
 }
 
-ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true), recordAudio(false) {
+ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true), recordAudio(false), dir_path(nullptr) {
     avcodec_register_all();
     avdevice_register_all();
 
@@ -341,7 +341,8 @@ int ScreenRecorder::openAudioDevice() {
 
 int ScreenRecorder::initOutputFile() {
     value = 0;
-    //outputFile = "media/output.mp4";
+    outputFile = const_cast<char *>("output.mp4");
+    string completePath = string(dir_path) + string("\\") + string(outputFile);
 
     outAVFormatContext = nullptr;
     outputAVFormat = av_guess_format(nullptr, "output.mp4", nullptr);
@@ -351,7 +352,7 @@ int ScreenRecorder::initOutputFile() {
     }
 
     //avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, nullptr, outputFile);  //for just video, we used this
-    avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, outputAVFormat->name, "..\\media\\output.mp4");
+    avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, outputAVFormat->name, const_cast<char *>(completePath.c_str()));
     if (outAVFormatContext == nullptr) {
         cerr << "Error in allocating outAVFormatContext" << endl;
         exit(-4);
@@ -363,7 +364,7 @@ int ScreenRecorder::initOutputFile() {
 
     //create an empty video file
     if (!(outAVFormatContext->flags & AVFMT_NOFILE)) {
-        if (avio_open2(&outAVFormatContext->pb, "..\\media\\output.mp4", AVIO_FLAG_WRITE, nullptr, nullptr) < 0) {
+        if (avio_open2(&outAVFormatContext->pb, const_cast<char*>(completePath.c_str()), AVIO_FLAG_WRITE, nullptr, nullptr) < 0) {
             cerr << "Error in creating the video file" << endl;
             exit(-10);
         }
@@ -384,18 +385,25 @@ int ScreenRecorder::initOutputFile() {
 }
 
 void ScreenRecorder::startRecording() {
-    if (recordAudio) openAudioDevice();
-    openVideoDevice();
-    initOutputFile();
-    t_video = std::move(std::thread{[this]() {
-                    this->captureVideoFrames();
-                }
-        });
-    if (recordAudio) {
-        t_audio = std::move(std::thread{ [this]() {
-                this->captureAudio();
-            }
+    if (dir_path == nullptr) {
+        cout << "Output direcotry not set. Set it before start recording." << endl;
+        setActiveMenu(true);
+        setStarted(false);
+    }
+    else {
+        if (recordAudio) openAudioDevice();
+        openVideoDevice();
+        initOutputFile();
+        t_video = std::move(std::thread{ [this]() {
+                        this->captureVideoFrames();
+                    }
             });
+        if (recordAudio) {
+            t_audio = std::move(std::thread{ [this]() {
+                    this->captureAudio();
+                }
+            });
+        }
     }
 }
 

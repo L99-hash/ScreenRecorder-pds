@@ -4,8 +4,8 @@
 #include <csignal>
 #include <vector>
 
-enum Command { stop, start, pause, resume, audio, help };
-std::vector<std::string> commands{ "stop", "start", "pause", "resume", "audio", "help"};
+enum Command { stop, start, pause, resume, audio, out, help };
+std::vector<std::string> commands{ "stop", "start", "pause", "resume", "audio", "out", "help"};
 
 ScreenRecorder screenRecorder;
 
@@ -33,7 +33,7 @@ void showCommands() {
     std::cout << "help --> show all commands" << std::endl;
 }
 int main() {
-    std::string cmd;
+    std::string cmd, dir;
     bool endWhile = false;
     bool started = false;
     bool inPause = false;
@@ -57,7 +57,7 @@ int main() {
 
             break;
         case start:
-            if (!started) {
+            if (!screenRecorder.getStarted()) {
                 screenRecorder.setActiveMenu(false);
                 started = true;
                 screenRecorder.setStarted(started);
@@ -91,6 +91,11 @@ int main() {
             break;
         case help:
             showCommands();
+            break;
+        case out:
+            std::cout << "Insert path of output directory: ";
+            std::cin >> dir;
+            screenRecorder.setOutputDir(const_cast<char *>(dir.c_str()));
             break;
         default:
             std::cout << "Command: " << "\"" << cmd << "\"" << " does not exist" << std::endl;

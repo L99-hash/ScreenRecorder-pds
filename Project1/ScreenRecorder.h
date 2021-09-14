@@ -119,6 +119,7 @@ class ScreenRecorder {
     int audioStreamIndx;
     double video_pts;
     const char* dev_name;
+    const char* dir_path;
 
     int width;
     int height;
@@ -156,6 +157,9 @@ public:
     void setStarted(bool val) {
         started = val;
     }
+    bool getStarted() {
+        return started;
+    }
     bool getActiveMenu() {
         std::lock_guard<std::mutex> lg(mu);
         return activeMenu;
@@ -170,6 +174,9 @@ public:
     };
     void setRecordAudio(bool val) {
         recordAudio = val;
+    }
+    void setOutputDir(const char* dir) {
+        dir_path = dir;
     }
 };
 
