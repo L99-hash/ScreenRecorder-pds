@@ -115,7 +115,6 @@ int ScreenRecorder::openVideoDevice() throw() {
     pAVInputFormat = av_find_input_format("gdigrab");
     //Set some options
     //grabbing frame rate
-    //av_dict_set(&options,"framerate","5",0);
     //The distance from the left edge of the screen or desktop
     //av_dict_set(&options,"offset_x","20",0);
     //The distance from the top edge of the screen or desktop
@@ -284,7 +283,7 @@ int ScreenRecorder::openAudioDevice() {
     show_dshow_device();
 
     audioInputFormat = av_find_input_format("dshow");
-    value = avformat_open_input(&inAudioFormatContext, "audio=Microfono (Realtek(R) Audio)", audioInputFormat, &audioOptions);
+    value = avformat_open_input(&inAudioFormatContext, "audio=Microphone (Realtek High Definition Audio)", audioInputFormat, &audioOptions);
     //audioInputFormat = av_find_input_format("pulse");
     //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
     if (value != 0) {
@@ -745,6 +744,7 @@ void ScreenRecorder::captureAudio() {
                         outPacket->stream_index = outAudioStreamIndex;
 
                         write_lock.lock();
+                        
                         if (av_write_frame(outAVFormatContext, outPacket) != 0)
                         {
                             cerr << "Error in writing audio frame" << endl;

@@ -62,18 +62,20 @@ int main() {
     bool inPause = false;
 
     // register signal SIGINT and signal handler  
-    signal(SIGINT, stopSignalHandler);
+    
 
     std::thread t_video, t_audio;
 
     showCommands();
 
     while (!endWhile) {
+        signal(SIGINT, stopSignalHandler);
         if(screenRecorder.getActiveMenu()) std::cout << "\nInsert command: ";
         std::cin >> cmd;
         Command c = stringToInt(cmd);
-
+        std::cin.clear();
         switch (c) {
+            
         case stop:
             if (started) {
                 stopCommand(screenRecorder);
@@ -83,7 +85,7 @@ int main() {
 
             break;
         case start:
-            std::cin.clear();
+            //std::cin.clear();
             if (!started) {
                 screenRecorder.setActiveMenu(false);
                 started = true;

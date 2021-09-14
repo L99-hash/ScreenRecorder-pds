@@ -119,7 +119,9 @@ class ScreenRecorder {
 
     int width;
     int height;
+    
 public:
+   
     std::condition_variable cv;
     std::mutex mu;
     std::mutex write_lock;
