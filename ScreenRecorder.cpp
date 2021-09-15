@@ -34,8 +34,8 @@ void getScreenResolution(int& width, int& height) {
     width = (int)GetSystemMetrics(SM_CXSCREEN);
     height = (int)GetSystemMetrics(SM_CYSCREEN);
 #else
-    //Display* disp = XOpenDisplay(NULL);
-    //Screen* scrn = DefaultScreenOfDisplay(disp);
+    Display* disp = XOpenDisplay(NULL);
+    Screen* scrn = DefaultScreenOfDisplay(disp);
     width = 1920; //scrn->width;
     height = 1104; //scrn->height;
 #endif
@@ -61,7 +61,7 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
 ScreenRecorder::~ScreenRecorder() {
 
     if (started) {
-        
+
         t_video.join();
         if (recordAudio)
             t_audio.join();
