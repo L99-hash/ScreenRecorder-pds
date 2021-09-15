@@ -81,7 +81,6 @@ ScreenRecorder::~ScreenRecorder() {
         else{
             cerr << "Error: unable to close the inAudioFormatContext" << endl;
             exit(-1);
-            //throw "Error: unable to close the file";
         }
         avformat_free_context(inAudioFormatContext);
         if(inAudioFormatContext == nullptr){
@@ -99,7 +98,6 @@ ScreenRecorder::~ScreenRecorder() {
         else {
             cerr << "Error: unable to close the file" << endl;
             exit(-1);
-            //throw "Error: unable to close the file";
         }
 
         avformat_free_context(pAVFormatContext);
@@ -661,6 +659,8 @@ void ScreenRecorder::captureAudio() {
     AVFrame* rawFrame, * scaledFrame;
     uint8_t** resampledData;
 
+    bool endPause = false;
+
     init_fifo();
 
     //allocate space for a packet
@@ -724,9 +724,47 @@ void ScreenRecorder::captureAudio() {
         //ul.lock();
         if (pauseCapture) {
             cout << "Pause audio" << endl;
+            endPause = true;
+            avformat_close_input(&inAudioFormatContext);
+            if (inAudioFormatContext == nullptr) {
+                cout << "inAudioFormatContext close successfully" << endl;
+            }
+            else {
+                cerr << "Error: unable to close the inAudioFormatContext" << endl;
+                exit(-1);
+            }
         }
         cv.wait(ul, [this]() { return !pauseCapture; });   //pause capture (not busy waiting)
 
+        if (endPause) {
+            endPause = false;
+            value = avformat_open_input(&inAudioFormatContext, "audio=Microfono (Realtek(R) Audio)", audioInputFormat, &audioOptions);
+            //audioInputFormat = av_find_input_format("pulse");
+            //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
+            if (value != 0) {
+                cerr << "Error in opening input device (audio)" << endl;
+                exit(-1);
+                //throw error("Error in opening input device");
+            }
+
+            value = avformat_find_stream_info(inAudioFormatContext, nullptr);
+            if (value != 0) {
+                cerr << "Error: cannot find the audio stream information" << endl;
+                exit(-1);
+            }
+
+            audioStreamIndx = -1;
+            for (int i = 0; i < inAudioFormatContext->nb_streams; i++) {
+                if (inAudioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+                    audioStreamIndx = i;
+                    break;
+                }
+            }
+            if (audioStreamIndx == -1) {
+                cerr << "Error: unable to find audio stream index" << endl;
+                exit(-2);
+            }
+        }
         if (stopCapture) { //check if the capture has to stop
             break;
         }
@@ -929,13 +967,12 @@ int ScreenRecorder::captureVideoFrames() {
     time(&startTime);
 
     while (true) {
-
-        unique_lock<mutex> ul(mu);
         //ul.unlock();
         //if(ii++ == noFrames)
           //  break;
 
         //ul.lock();
+        unique_lock<mutex> ul(mu);
         if (pauseCapture) {
             cout << "Pause" << endl;
             outFile << "///////////////////   Pause  ///////////////////" << endl;
@@ -970,8 +1007,9 @@ int ScreenRecorder::captureVideoFrames() {
             ////////////////////////////////////////////////////////////////////
         }
 
-        if (stopCapture)  //check if the capture has to stop
+        if (stopCapture) { //check if the capture has to stop
             break;
+        }
         ul.unlock();
 
         if (av_read_frame(pAVFormatContext, pAVPacket) >= 0 && pAVPacket->stream_index == VideoStreamIndx) {
