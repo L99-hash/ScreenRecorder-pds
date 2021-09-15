@@ -45,8 +45,14 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avcodec_register_all();
     avdevice_register_all();
 
+    ::SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+
     getScreenResolution(width, height);
-    getScreenResolution(screen_width, screen_height);
+    screen_height = height;
+    screen_width = width;
+
+    cout << width << "x" << height << endl;
+    //getScreenResolution(screen_width, screen_height);
 
     x_offset = 0;
     y_offset = 0;
