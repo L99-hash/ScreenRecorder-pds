@@ -36,12 +36,12 @@ void getScreenResolution(int& width, int& height) {
 #else
     //Display* disp = XOpenDisplay(NULL);
     //Screen* scrn = DefaultScreenOfDisplay(disp);
-    width = 1920; //scrn->width;
-    height = 1104; //scrn->height;
+    width = 2880; //scrn->width;
+    height = 1800; //scrn->height;
 #endif
 }
 
-ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true), recordAudio(false), dir_path(nullptr) {
+ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true), recordAudio(false), dir_path(nullptr), disabledMenu(false) {
     avcodec_register_all();
     avdevice_register_all();
 #if defined _WIN32
@@ -1006,7 +1006,7 @@ int ScreenRecorder::captureVideoFrames() {
     AVPacket outPacket;
     int gotPicture;
 
-    double pauseTime, startSeconds;
+    double pauseTime, startSeconds, precSeconds;
     time_t startPause, stopPause;
     time_t startTime;
     time(&startTime);
@@ -1021,10 +1021,9 @@ int ScreenRecorder::captureVideoFrames() {
         //ul.lock();
         unique_lock<mutex> ul(mu);
         if (pauseCapture) {
-            cout << "Pause" << endl;
-            outFile << "///////////////////   Pause  ///////////////////" << endl;
-            cout << "outVideoCodecContext->time_base: " << outVideoCodecContext->time_base.num << ", " << outVideoCodecContext->time_base.den << endl;
-            ////////////////////////////////////////////////////////////////////
+
+
+
             endPause = true;
             time(&startPause);
             numPause++;
@@ -1178,16 +1177,23 @@ int ScreenRecorder::captureVideoFrames() {
 
                     mu.lock();
                     if (!activeMenu) {
+                        disabledMenu = false;
                         time(&timer);
                         seconds = difftime(timer, 0) - startSeconds;
-
                         int h = (int)(seconds / 3600);
                         int m = (int)(seconds / 60) % 60;
                         int s = (int)(seconds) % 60;
+                        if((seconds - precSeconds) >= 1){
+                            std::cout << "\r" << std::setw(2) << std::setfill('0') << h << ':'
+                            << std::setw(2) << std::setfill('0') << m << ':'
+                            << std::setw(2) << std::setfill('0') << s << std::flush;
+                            precSeconds = seconds;
+                        }
 
-                        std::cout << std::flush << "\r" << std::setw(2) << std::setfill('0') << h << ':'
-                        << std::setw(2) << std::setfill('0') << m << ':'
-                        << std::setw(2) << std::setfill('0') << s << std::flush;
+                    }
+                    else{
+                        disabledMenu = true;
+                        //std::cout << "Fine dell'attesa" << std::endl;
                     }
                     mu.unlock();
 

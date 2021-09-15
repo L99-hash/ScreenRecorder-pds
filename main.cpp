@@ -8,12 +8,26 @@ enum Command { stop, start, pause, resume, audio, out, dim, offset, help };
 std::vector<std::string> commands{ "stop", "start", "pause", "resume", "audio", "out", "dim", "offset", "help"};
 
 ScreenRecorder screenRecorder;
+bool justPause = false;
 
 void stopSignalHandler(int signum) {
     std::cout << "\nInterrupt signal (" << signum << ") received.\n";
-    std::cout << "\nInsert command: ";
 
-    screenRecorder.setActiveMenu(true);
+
+    if(!screenRecorder.getActiveMenu()){
+        screenRecorder.setActiveMenu(true);
+
+
+        while(!screenRecorder.getDisabledMenu());
+        justPause=true;
+        std::cout<< "Insert command: "<<std::flush;
+    }
+    else{
+        justPause=false;
+        screenRecorder.setActiveMenu(false);
+
+    }
+
 }
 
 Command stringToInt(std::string cmd) {
@@ -34,6 +48,7 @@ void showCommands() {
     std::cout << "offset --> set top left point of screen section to record" << std::endl;
     std::cout << "out --> set output direcotry (relative or absolute path)" << std::endl;
     std::cout << "help --> show all commands" << std::endl;
+    std::cout << "ctrl + c --> show menu while recording" << std::endl;
 }
 int main() {
     std::string cmd, dir;
@@ -42,11 +57,14 @@ int main() {
     bool started = false;
     bool inPause = false;
 
+
     showCommands();
 
     while (!endWhile) {
         signal(SIGINT, stopSignalHandler);
-        if(screenRecorder.getActiveMenu()) std::cout << "\nInsert command: ";
+        if(!justPause && screenRecorder.getActiveMenu() ) std::cout << "\nInsert command: ";
+
+
         std::cin >> cmd;
         Command c = stringToInt(cmd);
         std::cin.clear();
@@ -78,6 +96,7 @@ int main() {
                     }
                     break;
                     case pause:
+                        justPause = false;
                         if (started) {
                             screenRecorder.pauseCommand();
                             inPause = true;

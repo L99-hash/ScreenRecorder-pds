@@ -29,8 +29,8 @@
 
 #if defined _WIN32
 #include <windows.h>
-#else
-#include <X11/Xlib.h>
+//#else
+//#include <X11/Xlib.h>
 #endif
 
 #define __STDC_CONSTANT_MACROS
@@ -163,6 +163,7 @@ public:
     bool pauseCapture;
     bool stopCapture;
     bool activeMenu;
+    bool disabledMenu;
     bool started = false;
     ScreenRecorder();
     ~ScreenRecorder();
@@ -198,6 +199,15 @@ public:
         std::lock_guard<std::mutex> lg(mu);
         activeMenu = val;
     }
+
+
+    bool getDisabledMenu() {
+        std::lock_guard<std::mutex> lg(mu);
+        return disabledMenu;
+    }
+
+
+
 
     bool getRecordAudio() {
         return recordAudio;

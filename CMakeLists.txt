@@ -21,9 +21,7 @@ pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
 target_link_libraries(ScreenRecorder_pds
         PkgConfig::LIBAV
         )
-target_link_libraries(ScreenRecorder_pds
-        ${ScreenRecorder_pds_LINK_LIBRARIES} X11
-        )
+
 
 ##find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
 ##find_library(AVCODEC_LIBRARY avcodec)
