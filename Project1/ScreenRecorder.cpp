@@ -53,6 +53,7 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avdevice_register_all();
 #if defined _WIN32
     ::SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+    deviceName = "";
 #endif
     getScreenResolution(width, height);
     screen_height = height;
@@ -360,12 +361,12 @@ int ScreenRecorder::openAudioDevice() {
 
 #if defined _WIN32
     show_dshow_device();
-    string deviceName;
     cout << "\nPlease select the audio device among those listed before: ";
-    cin >> deviceName;
+    getchar();
+    getline(cin, deviceName);
 
     audioInputFormat = av_find_input_format("dshow");
-    value = avformat_open_input(&inAudioFormatContext, deviceName.c_str(), audioInputFormat, &audioOptions);
+    value = avformat_open_input(&inAudioFormatContext, ("audio="+deviceName).c_str(), audioInputFormat, &audioOptions);
     //audioInputFormat = av_find_input_format("pulse");
     //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
     if (value != 0) {
@@ -779,7 +780,7 @@ void ScreenRecorder::captureAudio() {
         if (endPause) {
             endPause = false;
 #if defined _WIN32
-            value = avformat_open_input(&inAudioFormatContext, deviceName.c_str(), audioInputFormat, &audioOptions);
+            value = avformat_open_input(&inAudioFormatContext, ("audio="+deviceName).c_str(), audioInputFormat, &audioOptions);
             //audioInputFormat = av_find_input_format("pulse");
             //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
             if (value != 0) {
@@ -1015,7 +1016,7 @@ int ScreenRecorder::captureVideoFrames() {
     AVPacket outPacket;
     int gotPicture;
 
-    double pauseTime, startSeconds, precSeconds;
+    double pauseTime, startSeconds, precSeconds=0;
     time_t startPause, stopPause;
     time_t startTime;
     time(&startTime);
