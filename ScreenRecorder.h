@@ -29,9 +29,8 @@
 
 #if defined _WIN32
 #include <windows.h>
-//#else
-
-//#include <X11/Xlib.h>
+#else
+#include <X11/Xlib.h>
 #endif
 
 #define __STDC_CONSTANT_MACROS
@@ -41,7 +40,6 @@ extern "C"
 {
 #include "libavcodec/avcodec.h"
 #include "libavcodec/avfft.h"
-#include "libavcodec/codec.h"
 
 #include "libavdevice/avdevice.h"
 
