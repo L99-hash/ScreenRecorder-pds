@@ -30,14 +30,21 @@ void show_avfoundation_device() {
 }
 
 void getScreenResolution(int& width, int& height) {
-#if defined _WIN32
-    width = (int)GetSystemMetrics(SM_CXSCREEN);
-    height = (int)GetSystemMetrics(SM_CYSCREEN);
-#else
+#if defined __APPLE__
     //Display* disp = XOpenDisplay(NULL);
     //Screen* scrn = DefaultScreenOfDisplay(disp);
     width = 2880;//scrn->width;
     height = 1800;//scrn->height;
+#endif
+#if defined _WIN32
+    width = (int)GetSystemMetrics(SM_CXSCREEN);
+    height = (int)GetSystemMetrics(SM_CYSCREEN);
+#endif
+#if defined linux
+    Display* disp = XOpenDisplay(NULL);
+    Screen* scrn = DefaultScreenOfDisplay(disp);
+    width = scrn->width;
+    height = scrn->height;
 #endif
 }
 
