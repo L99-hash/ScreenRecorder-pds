@@ -71,27 +71,6 @@ extern "C"
 #include "libavutil/audio_fifo.h"
 }
 
-#if defined _WIN32
-#define VIDEO "gdigrab"
-#define VIDEO_DEVICE "desktop"
-#define AUDIO "dshow"
-#define AUDIO_DEVICE "audio="
-#endif
-
-#if defined linux
-#define VIDEO "x11grab"
-#define VIDEO_DEVICE ":0.0"
-#define AUDIO "alsa"
-#define AUDIO_DEVICE "hw:0"
-#endif
-
-#if defined __APPLE__
-#define VIDEO "avfoundation"
-#define VIDEO_DEVICE "0:none"
-#define AUDIO "avfoudation"
-#define AUDIO_DEVICE "none:0"
-#endif
-
 class error : std::exception {
 private:
     const char* desc;
@@ -154,6 +133,9 @@ class ScreenRecorder {
 
     std::thread t_audio;
     std::thread t_video;
+#if defined _WIN32
+    std::string deviceName;
+#endif
 
 public:
 
