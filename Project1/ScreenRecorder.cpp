@@ -45,7 +45,9 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avcodec_register_all();
     avdevice_register_all();
 
+#if defined _WIN32
     ::SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+#endif
 
     getScreenResolution(width, height);
     screen_height = height;
@@ -219,26 +221,26 @@ int ScreenRecorder::openVideoDevice() throw() {
     av_dict_set(&videoOptions, "offset_x", to_string(x_offset).c_str(), 0);
     //The distance from the top edge of the screen or desktop
     av_dict_set(&videoOptions, "offset_y", to_string(y_offset).c_str(), 0);
-    value = av_dict_set(&videoOptions, "pixel_format", "0rgb", 0);
+    
+    value = av_dict_set(&options, "pixel_format", "yuv420p", 0);
     if (value < 0) {
         cerr << "Error in setting pixel format" << endl;
         exit(-1);
     }
 
-    value = av_dict_set(&videoOptions, "video_device_index", "1", 0);
-
-    if (value < 0) {
-        cerr << "Error in setting video device index" << endl;
+    //value = av_dict_set(&options, "video_device_index", "1", 0);
+    /*
+    if(value < 0){
+        cerr << "Error in setting video device index" <<endl;
         exit(-1);
     }
-
+    */
     pAVInputFormat = av_find_input_format("avfoundation");
 
-    if (avformat_open_input(&pAVFormatContext, "Capture screen 0:none", pAVInputFormat, &videoOptions) != 0) {  //TODO trovare un modo per selezionare sempre lo schermo (forse "Capture screen 0")
+    if (avformat_open_input(&pAVFormatContext, "1:none", pAVInputFormat, &options) != 0) {  //TODO trovare un modo per selezionare sempre lo schermo (forse "Capture screen 0")
         cerr << "Error in opening input device" << endl;
         exit(-1);
     }
-
 
 
 #endif
@@ -366,7 +368,12 @@ int ScreenRecorder::openAudioDevice() {
 int ScreenRecorder::initOutputFile() {
     value = 0;
     outputFile = const_cast<char *>("output.mp4");
+
+#if defined _WIN32
     string completePath = string(dir_path) + string("\\") + string(outputFile);
+#else
+    string completePath = string(dir_path) + string("/") + string(outputFile);
+#endif
 
     outAVFormatContext = nullptr;
     outputAVFormat = av_guess_format(nullptr, "output.mp4", nullptr);
