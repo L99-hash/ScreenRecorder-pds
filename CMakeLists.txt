@@ -22,6 +22,23 @@ target_link_libraries(ScreenRecorder_pds
         PkgConfig::LIBAV
         )
 
+IF(UNIX)
+target_link_libraries(ScreenRecorder_pds
+        -L/usr/X11R6/lib -I/usr/X11R6/include -lX11
+        )
+ENDIF(UNIX)
+IF(APPLE)
+include_directories(
+        BEFORE /usr/X11R6/include /usr/X11R6/lib
+)
+
+target_link_libraries(ScreenRecorder_pds
+        -L/usr/X11R6/lib -I/usr/X11R6/include -lX11
+        )
+ENDIF(APPLE)
+
+
+
 ##find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
 ##find_library(AVCODEC_LIBRARY avcodec)
 
