@@ -95,6 +95,7 @@ ScreenRecorder::~ScreenRecorder() {
             cerr << "Error: unable to free AudioFormatContext" << endl;
             exit(-1);
         }
+
         avformat_close_input(&pAVFormatContext);
         if (pAVFormatContext == nullptr) {
             cout << "File close successfully" << endl;
@@ -234,12 +235,10 @@ int ScreenRecorder::openVideoDevice() throw() {
     }
 
     /*value = av_dict_set(&videoOptions,"offset_x",to_string(x_offset).c_str(), 0);
-
     if(value < 0){
         cerr << "Error in setting offset_x" <<endl;
         exit(-1);
     }
-
     //The distance from the top edge of the screen or desktop
     value = av_dict_set(&videoOptions,"offset_y",to_string(y_offset).c_str(), 0);
     if(value < 0){
