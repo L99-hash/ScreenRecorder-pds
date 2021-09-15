@@ -3,6 +3,11 @@
 // Created by enrico on 11/08/21.
 //
 
+#pragma once
+//
+// Created by enrico on 11/08/21.
+//
+
 #ifndef SCREENRECORDER_PDS_SCREENRECORDER_H
 #define SCREENRECORDER_PDS_SCREENRECORDER_H
 
@@ -21,6 +26,8 @@
 #include <sstream>
 #include <iomanip>
 #include <functional>
+#include <thread>
+
 #if defined _WIN32
 #include <windows.h>
 #else
@@ -34,7 +41,6 @@ extern "C"
 {
 #include "libavcodec/avcodec.h"
 #include "libavcodec/avfft.h"
-#include "libavcodec/codec.h"
 
 #include "libavdevice/avdevice.h"
 
@@ -65,27 +71,6 @@ extern "C"
 #include "libswresample/swresample.h"
 #include "libavutil/audio_fifo.h"
 }
-
-#if defined _WIN32
-#define VIDEO "gdigrab"
-#define VIDEO_DEVICE "desktop"
-#define AUDIO "dshow"
-#define AUDIO_DEVICE "audio="
-#endif
-
-#if defined linux
-#define VIDEO "x11grab"
-#define VIDEO_DEVICE ":0.0"
-#define AUDIO "alsa"
-#define AUDIO_DEVICE "hw:0"
-#endif
-
-#if defined __APPLE__
-#define VIDEO "avfoundation"
-#define VIDEO_DEVICE "0:none"
-#define AUDIO "avfoudation"
-#define AUDIO_DEVICE "none:0"
-#endif
 
 class error : std::exception {
 private:
@@ -149,15 +134,19 @@ class ScreenRecorder {
 
     std::thread t_audio;
     std::thread t_video;
-    
+#if defined _WIN32
+    std::string deviceName;
+#endif
+
 public:
-   
+
     std::condition_variable cv;
     std::mutex mu;
     std::mutex write_lock;
     bool pauseCapture;
     bool stopCapture;
     bool activeMenu;
+    bool disabledMenu;
     bool started = false;
     ScreenRecorder();
     ~ScreenRecorder();
@@ -193,6 +182,15 @@ public:
         std::lock_guard<std::mutex> lg(mu);
         activeMenu = val;
     }
+
+
+    bool getDisabledMenu() {
+        std::lock_guard<std::mutex> lg(mu);
+        return disabledMenu;
+    }
+
+
+
 
     bool getRecordAudio() {
         return recordAudio;
