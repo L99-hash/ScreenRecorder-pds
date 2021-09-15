@@ -69,7 +69,6 @@ int main() {
         Command c = stringToInt(cmd);
         std::cin.clear();
         switch (c) {
-<<<<<<< HEAD
            case stop:
                if(started){
                    stopCommand(screenRecorder);
@@ -97,8 +96,6 @@ int main() {
                     std::cout << "Already started." << std::endl;
                     showCommands();
                 }
-=======
->>>>>>> macOS
 
             case stop:
                 if (started) {
@@ -173,13 +170,5 @@ int main() {
                                                     break;
         }
     }
-<<<<<<< HEAD
-
-    if(started){
-        t_video.join();
-        t_audio.join();
-    }
-=======
->>>>>>> macOS
     return 0;
 }
