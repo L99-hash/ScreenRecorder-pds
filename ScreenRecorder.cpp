@@ -36,8 +36,8 @@ void getScreenResolution(int& width, int& height) {
 #else
     //Display* disp = XOpenDisplay(NULL);
     //Screen* scrn = DefaultScreenOfDisplay(disp);
-    width = 2880; //scrn->width;
-    height = 1800; //scrn->height;
+    width = 2880;//scrn->width;
+    height = 1800;//scrn->height;
 #endif
 }
 
@@ -409,6 +409,7 @@ int ScreenRecorder::initOutputFile() {
 
     //avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, nullptr, outputFile);  //for just video, we used this
     avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, outputAVFormat->name, const_cast<char *>(completePath.c_str()));
+
     if (outAVFormatContext == nullptr) {
         cerr << "Error in allocating outAVFormatContext" << endl;
         exit(-4);
@@ -420,7 +421,7 @@ int ScreenRecorder::initOutputFile() {
 
     //create an empty video file
     if (!(outAVFormatContext->flags & AVFMT_NOFILE)) {
-        if (avio_open2(&outAVFormatContext->pb, const_cast<char*>(completePath.c_str()), AVIO_FLAG_WRITE, nullptr, nullptr) < 0) {
+        if (avio_open2(&outAVFormatContext->pb, const_cast<char*>(completePath.c_str()), AVIO_FLAG_WRITE, nullptr, &videoOptions) < 0) {
             cerr << "Error in creating the video file" << endl;
             exit(-10);
         }
@@ -431,7 +432,7 @@ int ScreenRecorder::initOutputFile() {
         exit(-11);
     }
 
-    value = avformat_write_header(outAVFormatContext, nullptr);
+    value = avformat_write_header(outAVFormatContext, &videoOptions);
     if (value < 0) {
         cerr << "Error in writing the header context" << endl;
         exit(-12);
@@ -1198,6 +1199,12 @@ int ScreenRecorder::captureVideoFrames() {
                     mu.unlock();
 
                     write_lock.lock();
+
+
+
+
+
+
                     if (av_write_frame(outAVFormatContext, &outPacket) != 0) {
                         cerr << "Error in writing video frame" << endl;
                     }
