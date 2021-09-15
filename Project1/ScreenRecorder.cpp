@@ -160,13 +160,13 @@ int ScreenRecorder::openVideoDevice() throw() {
 
     string dimension = to_string(width) + "x" + to_string(height);
     av_dict_set(&videoOptions, "video_size", dimension.c_str(), 0);   //option to set the dimension of the screen section to record
-    value = av_dict_set(&videoOptions, "framerate", "30", 0);
+    value = av_dict_set(&videoOptions, "framerate", "25", 0);
     if (value < 0) {
         cerr << "Error in setting dictionary value (setting framerate)" << endl;
         exit(-1);
     }
 
-    value = av_dict_set(&videoOptions, "preset", "fast", 0);
+    value = av_dict_set(&videoOptions, "preset", "ultrafast", 0);
     if (value < 0) {
         cerr << "Error in setting dictionary value (setting preset value)" << endl;
         exit(-1);
@@ -474,15 +474,15 @@ void ScreenRecorder::generateVideoStream() {
     outVideoCodecContext->bit_rate = 10000000; //2500000;
     outVideoCodecContext->width = width;   //dimension of the output video file
     outVideoCodecContext->height = height;
-    outVideoCodecContext->gop_size = 10;     // 3
+    outVideoCodecContext->gop_size = 15;     // 3
     outVideoCodecContext->global_quality = 500;
     outVideoCodecContext->max_b_frames = 2;
     outVideoCodecContext->time_base.num = 1;
-    outVideoCodecContext->time_base.den = 30; // 15fps
+    outVideoCodecContext->time_base.den = 25; // 15fps
     outVideoCodecContext->bit_rate_tolerance = 400000;
 
     if (outVideoCodecContext->codec_id == AV_CODEC_ID_H264) {
-        av_opt_set(outVideoCodecContext->priv_data, "preset", "fast", 0);
+        av_opt_set(outVideoCodecContext->priv_data, "preset", "ultrafast", 0);
     }
 
     if (outAVFormatContext->oformat->flags & AVFMT_GLOBALHEADER) {
@@ -1085,11 +1085,10 @@ int ScreenRecorder::captureVideoFrames() {
                         int h = (int)(seconds / 3600);
                         int m = (int)(seconds / 60) % 60;
                         int s = (int)(seconds) % 60;
-                        /*
+                        
                         std::cout << std::flush << "\r" << std::setw(2) << std::setfill('0') << h << ':'
                             << std::setw(2) << std::setfill('0') << m << ':'
                             << std::setw(2) << std::setfill('0') << s << std::flush;
-                        */
                     }
                     mu.unlock();
 
