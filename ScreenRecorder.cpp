@@ -53,6 +53,7 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     avdevice_register_all();
 #if defined _WIN32
     ::SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+    deviceName = "";
 #endif
     getScreenResolution(width, height);
     screen_height = height;
@@ -80,18 +81,18 @@ ScreenRecorder::~ScreenRecorder() {
         }
 
         avformat_close_input(&inAudioFormatContext);
-        if(inAudioFormatContext == nullptr){
+        if (inAudioFormatContext == nullptr) {
             cout << "inAudioFormatContext close successfully" << endl;
         }
-        else{
+        else {
             cerr << "Error: unable to close the inAudioFormatContext" << endl;
             exit(-1);
         }
         avformat_free_context(inAudioFormatContext);
-        if(inAudioFormatContext == nullptr){
+        if (inAudioFormatContext == nullptr) {
             cout << "AudioFormat freed successfully" << endl;
         }
-        else{
+        else {
             cerr << "Error: unable to free AudioFormatContext" << endl;
             exit(-1);
         }
@@ -138,7 +139,7 @@ void ScreenRecorder::resumeCommand() {
     }
 }
 
-void ScreenRecorder::setScreenDimension(int width, int height){
+void ScreenRecorder::setScreenDimension(int width, int height) {
     this->width = width;
     this->height = height;
 
@@ -181,9 +182,9 @@ int ScreenRecorder::openVideoDevice() throw() {
     //Set some options
     //grabbing frame rate
     //The distance from the left edge of the screen or desktop
-    av_dict_set(&videoOptions,"offset_x",to_string(x_offset).c_str(), 0);
+    av_dict_set(&videoOptions, "offset_x", to_string(x_offset).c_str(), 0);
     //The distance from the top edge of the screen or desktop
-    av_dict_set(&videoOptions,"offset_y",to_string(y_offset).c_str(), 0);
+    av_dict_set(&videoOptions, "offset_y", to_string(y_offset).c_str(), 0);
     //Video frame size. The default is to capture the full screen
     //av_dict_set(&options,"video_size","640x480",0);
 
@@ -226,11 +227,11 @@ int ScreenRecorder::openVideoDevice() throw() {
     show_avfoundation_device();
 
     //The distance from the left edge of the screen or desktop
-    value = av_dict_set(&videoOptions,"vf",("crop=" + to_string(width) + ":"+ to_string(height) + ":" + to_string(x_offset)+":"+
-                                                                                                                           to_string(y_offset)).c_str(), 0);
+    value = av_dict_set(&videoOptions, "vf", ("crop=" + to_string(width) + ":" + to_string(height) + ":" + to_string(x_offset) + ":" +
+        to_string(y_offset)).c_str(), 0);
 
-    if(value < 0){
-        cerr << "Error in setting crop" <<endl;
+    if (value < 0) {
+        cerr << "Error in setting crop" << endl;
         exit(-1);
     }
 
@@ -247,8 +248,8 @@ int ScreenRecorder::openVideoDevice() throw() {
     }
      */
     value = av_dict_set(&videoOptions, "pixel_format", "yuv420p", 0);
-    if(value < 0){
-        cerr << "Error in setting pixel format" <<endl;
+    if (value < 0) {
+        cerr << "Error in setting pixel format" << endl;
         exit(-1);
     }
 
@@ -262,7 +263,7 @@ int ScreenRecorder::openVideoDevice() throw() {
     */
     pAVInputFormat = av_find_input_format("avfoundation");
 
-    if(avformat_open_input(&pAVFormatContext, "1:none", pAVInputFormat, &videoOptions)!=0){
+    if (avformat_open_input(&pAVFormatContext, "1:none", pAVInputFormat, &videoOptions) != 0) {
         cerr << "Error in opening input device" << endl;
         exit(-1);
     }
@@ -360,9 +361,10 @@ int ScreenRecorder::openAudioDevice() {
 
 #if defined _WIN32
     show_dshow_device();
-    string deviceName;
     cout << "\nPlease select the audio device among those listed before: ";
-    cin >> deviceName;
+    getchar();
+    getline(cin, deviceName);
+    deviceName = "audio=" + deviceName;
 
     audioInputFormat = av_find_input_format("dshow");
     value = avformat_open_input(&inAudioFormatContext, deviceName.c_str(), audioInputFormat, &audioOptions);
@@ -401,7 +403,7 @@ int ScreenRecorder::openAudioDevice() {
 
 int ScreenRecorder::initOutputFile() {
     value = 0;
-    outputFile = const_cast<char *>("output.mp4");
+    outputFile = const_cast<char*>("output.mp4");
 #if defined _WIN32
     string completePath = string(dir_path) + string("\\") + string(outputFile);
 #else
@@ -416,7 +418,7 @@ int ScreenRecorder::initOutputFile() {
     }
 
     //avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, nullptr, outputFile);  //for just video, we used this
-    avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, outputAVFormat->name, const_cast<char *>(completePath.c_str()));
+    avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, outputAVFormat->name, const_cast<char*>(completePath.c_str()));
 
     if (outAVFormatContext == nullptr) {
         cerr << "Error in allocating outAVFormatContext" << endl;
@@ -470,12 +472,12 @@ void ScreenRecorder::startRecording() {
     t_video = std::move(std::thread{ [this]() {
         this->captureVideoFrames();
     }
-    });
+        });
     if (recordAudio) {
         t_audio = std::move(std::thread{ [this]() {
             this->captureAudio();
         }
-        });
+            });
     }
 }
 
@@ -642,7 +644,7 @@ int ScreenRecorder::init_fifo()
 {
     /* Create the FIFO buffer based on the specified output sample format. */
     if (!(fifo = av_audio_fifo_alloc(outAudioCodecContext->sample_fmt,
-                                     outAudioCodecContext->channels, 1))) {
+        outAudioCodecContext->channels, 1))) {
         fprintf(stderr, "Could not allocate FIFO\n");
         return AVERROR(ENOMEM);
     }
@@ -666,24 +668,24 @@ int ScreenRecorder::add_samples_to_fifo(uint8_t** converted_input_samples, const
 }
 
 int ScreenRecorder::initConvertedSamples(uint8_t*** converted_input_samples,
-                                         AVCodecContext* output_codec_context,
-                                         int frame_size) {
+    AVCodecContext* output_codec_context,
+    int frame_size) {
     int error;
     /* Allocate as many pointers as there are audio channels.
      * Each pointer will later point to the audio samples of the corresponding
      * channels (although it may be NULL for interleaved formats).
      */
     if (!(*converted_input_samples = (uint8_t**)calloc(output_codec_context->channels,
-                                                       sizeof(**converted_input_samples)))) {
+        sizeof(**converted_input_samples)))) {
         fprintf(stderr, "Could not allocate converted input sample pointers\n");
         return AVERROR(ENOMEM);
     }
     /* Allocate memory for the samples of all channels in one consecutive
      * block for convenience. */
     if (av_samples_alloc(*converted_input_samples, nullptr,
-                         output_codec_context->channels,
-                         frame_size,
-                         output_codec_context->sample_fmt, 0) < 0) {
+        output_codec_context->channels,
+        frame_size,
+        output_codec_context->sample_fmt, 0) < 0) {
 
         exit(1);
     }
@@ -731,14 +733,14 @@ void ScreenRecorder::captureAudio() {
     //init the resampler
     SwrContext* resampleContext = nullptr;
     resampleContext = swr_alloc_set_opts(resampleContext,
-                                         av_get_default_channel_layout(outAudioCodecContext->channels),
-                                         outAudioCodecContext->sample_fmt,
-                                         outAudioCodecContext->sample_rate,
-                                         av_get_default_channel_layout(inAudioCodecContext->channels),
-                                         inAudioCodecContext->sample_fmt,
-                                         inAudioCodecContext->sample_rate,
-                                         0,
-                                         nullptr);
+        av_get_default_channel_layout(outAudioCodecContext->channels),
+        outAudioCodecContext->sample_fmt,
+        outAudioCodecContext->sample_rate,
+        av_get_default_channel_layout(inAudioCodecContext->channels),
+        inAudioCodecContext->sample_fmt,
+        inAudioCodecContext->sample_rate,
+        0,
+        nullptr);
     if (!resampleContext) {
         cerr << "Cannot allocate the resample context" << endl;
         exit(1);
@@ -863,8 +865,8 @@ void ScreenRecorder::captureAudio() {
                 initConvertedSamples(&resampledData, outAudioCodecContext, rawFrame->nb_samples);
 
                 swr_convert(resampleContext,
-                            resampledData, rawFrame->nb_samples,
-                            (const uint8_t**)rawFrame->extended_data, rawFrame->nb_samples);
+                    resampledData, rawFrame->nb_samples,
+                    (const uint8_t**)rawFrame->extended_data, rawFrame->nb_samples);
 
                 /*if(endPause){
                     cout << "end pause" << endl;
@@ -1007,15 +1009,15 @@ int ScreenRecorder::captureVideoFrames() {
 
 
     swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, outVideoCodecContext->pix_fmt, SWS_BICUBIC,
-                             nullptr, nullptr, nullptr);
+        nullptr, nullptr, nullptr);
 
 
-    cout <<"pVCodec Context width: height " << pAVCodecContext->width << " " << pAVCodecContext->height << endl;
-    cout <<"outVideoCodecContext width: height " << outVideoCodecContext->width << " " << outVideoCodecContext->height << endl;
+    cout << "pVCodec Context width: height " << pAVCodecContext->width << " " << pAVCodecContext->height << endl;
+    cout << "outVideoCodecContext width: height " << outVideoCodecContext->width << " " << outVideoCodecContext->height << endl;
     AVPacket outPacket;
     int gotPicture;
 
-    double pauseTime, startSeconds, precSeconds;
+    double pauseTime, startSeconds, precSeconds=0;
     time_t startPause, stopPause;
     time_t startTime;
     time(&startTime);
@@ -1192,15 +1194,15 @@ int ScreenRecorder::captureVideoFrames() {
                         int h = (int)(seconds / 3600);
                         int m = (int)(seconds / 60) % 60;
                         int s = (int)(seconds) % 60;
-                        if((seconds - precSeconds) >= 1){
+                        if ((seconds - precSeconds) >= 1) {
                             std::cout << "\r" << std::setw(2) << std::setfill('0') << h << ':'
-                            << std::setw(2) << std::setfill('0') << m << ':'
-                            << std::setw(2) << std::setfill('0') << s << std::flush;
+                                << std::setw(2) << std::setfill('0') << m << ':'
+                                << std::setw(2) << std::setfill('0') << s << std::flush;
                             precSeconds = seconds;
                         }
 
                     }
-                    else{
+                    else {
                         disabledMenu = true;
                         //std::cout << "Fine dell'attesa" << std::endl;
                     }
