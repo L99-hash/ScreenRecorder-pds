@@ -30,6 +30,8 @@ void showCommands() {
     std::cout << "pause --> pause registration" << std::endl;
     std::cout << "resume --> resume registration after pause" << std::endl;
     std::cout << "stop --> stop registration" << std::endl;
+    std::cout << "dim --> set screen section to record" << std::endl;
+    std::cout << "offset --> set top left point of screen section to record" << std::endl;
     std::cout << "out --> set output direcotry (relative or absolute path)" << std::endl;
     std::cout << "help --> show all commands" << std::endl;
 }
@@ -63,7 +65,13 @@ int main() {
                 screenRecorder.setActiveMenu(false);
                 started = true;
                 screenRecorder.setStarted(started);
-                screenRecorder.startRecording();
+                try {
+                    screenRecorder.startRecording();
+                }
+                catch (std::exception e) {
+                    std::cout << e.what() << std::endl;
+                    exit(-1);
+                }
             }
             else {
                 std::cout << "Already started." << std::endl;

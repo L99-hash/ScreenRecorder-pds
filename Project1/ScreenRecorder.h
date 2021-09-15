@@ -87,6 +87,19 @@ extern "C"
 #define AUDIO_DEVICE "none:0"
 #endif
 
+class error : std::exception {
+private:
+    const char* desc;
+
+
+public:
+    error(const char* description) : desc(description) {}
+    const char* what() const noexcept {
+        return desc;
+    }
+
+};
+
 class ScreenRecorder {
     AVInputFormat* pAVInputFormat;
     AVFormatContext* pAVFormatContext;

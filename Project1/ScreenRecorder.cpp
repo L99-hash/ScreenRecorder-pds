@@ -8,19 +8,6 @@ using namespace std;
 
 //atomic<bool> activeMenu{ false };
 
-class error : exception {
-private:
-    const char* desc;
-
-
-public:
-    error(const char* description) : desc(description) {}
-    const char* what() const noexcept {
-        return desc;
-    }
-
-};
-
 //Show Dshow Device
 void show_dshow_device() {
     AVFormatContext* pFormatCtx = avformat_alloc_context();
@@ -140,11 +127,15 @@ void ScreenRecorder::resumeCommand() {
 void ScreenRecorder::setScreenDimension(int width, int height){
     this->width = width;
     this->height = height;
+
+    cout << "Screen dimension setted correctly" << endl;
 }
 
 void ScreenRecorder::setScreenOffset(int x_offset, int y_offset) {
     this->x_offset = x_offset;
     this->y_offset = y_offset;
+
+    cout << "Screen offset setted correctly" << endl;
 }
 
 /*==================================== VIDEO ==============================*/
@@ -963,8 +954,12 @@ int ScreenRecorder::captureVideoFrames() {
     AVPacket outPacket;
     int gotPicture;
 
+    double pauseTime, startSeconds;
+    time_t startPause, stopPause;
     time_t startTime;
     time(&startTime);
+
+    startSeconds = difftime(startTime, 0);
 
     while (true) {
         //ul.unlock();
@@ -979,6 +974,7 @@ int ScreenRecorder::captureVideoFrames() {
             cout << "outVideoCodecContext->time_base: " << outVideoCodecContext->time_base.num << ", " << outVideoCodecContext->time_base.den << endl;
             ////////////////////////////////////////////////////////////////////
             endPause = true;
+            time(&startPause);
             numPause++;
             /*avformat_close_input(&pAVFormatContext);
             if(pAVFormatContext == nullptr){
@@ -1002,6 +998,9 @@ int ScreenRecorder::captureVideoFrames() {
         cv.wait(ul, [this]() { return !pauseCapture; });   //pause capture (not busy waiting)
         if (endPause) {
             endPause = false;
+            time(&stopPause);
+            pauseTime = difftime(stopPause, startPause);
+            startSeconds += pauseTime;
             ///////////////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////////////
@@ -1128,7 +1127,8 @@ int ScreenRecorder::captureVideoFrames() {
                     mu.lock();
                     if (!activeMenu) {
                         time(&timer);
-                        seconds = difftime(timer, startTime);
+                        seconds = difftime(timer, 0) - startSeconds;
+                        
                         int h = (int)(seconds / 3600);
                         int m = (int)(seconds / 60) % 60;
                         int s = (int)(seconds) % 60;
