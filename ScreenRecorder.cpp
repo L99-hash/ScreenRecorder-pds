@@ -355,9 +355,12 @@ int ScreenRecorder::openAudioDevice() {
 
 #if defined _WIN32
     show_dshow_device();
+    string deviceName;
+    cout << "\nPlease select the audio device among those listed before: ";
+    cin >> deviceName;
 
     audioInputFormat = av_find_input_format("dshow");
-    value = avformat_open_input(&inAudioFormatContext, "audio=Microfono (Realtek(R) Audio)", audioInputFormat, &audioOptions);
+    value = avformat_open_input(&inAudioFormatContext, deviceName.c_str(), audioInputFormat, &audioOptions);
     //audioInputFormat = av_find_input_format("pulse");
     //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
     if (value != 0) {
@@ -770,7 +773,7 @@ void ScreenRecorder::captureAudio() {
         if (endPause) {
             endPause = false;
 #if defined _WIN32
-            value = avformat_open_input(&inAudioFormatContext, "audio=Microfono (Realtek(R) Audio)", audioInputFormat, &audioOptions);
+            value = avformat_open_input(&inAudioFormatContext, deviceName.c_str(), audioInputFormat, &audioOptions);
             //audioInputFormat = av_find_input_format("pulse");
             //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
             if (value != 0) {
