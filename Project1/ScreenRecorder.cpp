@@ -471,18 +471,27 @@ void ScreenRecorder::generateVideoStream() {
     outVideoCodecContext->codec_id = AV_CODEC_ID_H264;// AV_CODEC_ID_MPEG4; // AV_CODEC_ID_H264 // AV_CODEC_ID_MPEG1VIDEO
     outVideoCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
     outVideoCodecContext->pix_fmt = AV_PIX_FMT_YUV420P;
-    outVideoCodecContext->bit_rate = 10000000; //2500000;
+    outVideoCodecContext->bit_rate = /*10000000;*/ 2500000;
     outVideoCodecContext->width = width;   //dimension of the output video file
     outVideoCodecContext->height = height;
     outVideoCodecContext->gop_size = 15;     // 3
-    outVideoCodecContext->global_quality = 500;
+    //outVideoCodecContext->global_quality = 500;   //for AV_CODEC_ID_MPEG4 
     outVideoCodecContext->max_b_frames = 2;
     outVideoCodecContext->time_base.num = 1;
     outVideoCodecContext->time_base.den = 25; // 15fps
     outVideoCodecContext->bit_rate_tolerance = 400000;
 
     if (outVideoCodecContext->codec_id == AV_CODEC_ID_H264) {
-        av_opt_set(outVideoCodecContext->priv_data, "preset", "ultrafast", 0);
+        av_opt_set(outVideoCodecContext, "preset", "ultrafast", 0);
+        av_opt_set(outVideoCodecContext, "cabac", "1", 0);
+        av_opt_set(outVideoCodecContext, "ref", "3", 0);
+        av_opt_set(outVideoCodecContext, "deblock", "1:0:0", 0);
+        av_opt_set(outVideoCodecContext, "analyse", "0x3:0x113", 0);
+        av_opt_set(outVideoCodecContext, "subme", "7", 0);
+        av_opt_set(outVideoCodecContext, "chroma_qp_offset", "4", 0);
+        av_opt_set(outVideoCodecContext, "rc", "crf", 0);
+        av_opt_set(outVideoCodecContext, "rc_lookahead", "40", 0);
+        av_opt_set(outVideoCodecContext, "crf", "10.0", 0);
     }
 
     if (outAVFormatContext->oformat->flags & AVFMT_GLOBALHEADER) {
