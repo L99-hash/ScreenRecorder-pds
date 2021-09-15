@@ -34,10 +34,10 @@ void getScreenResolution(int& width, int& height) {
     width = (int)GetSystemMetrics(SM_CXSCREEN);
     height = (int)GetSystemMetrics(SM_CYSCREEN);
 #else
-    Display* disp = XOpenDisplay(NULL);
-    Screen* scrn = DefaultScreenOfDisplay(disp);
-    width = scrn->width;
-    height = scrn->height;
+    //Display* disp = XOpenDisplay(NULL);
+    //Screen* scrn = DefaultScreenOfDisplay(disp);
+    width = 1920; //scrn->width;
+    height = 1104; //scrn->height;
 #endif
 }
 
@@ -61,6 +61,11 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
 ScreenRecorder::~ScreenRecorder() {
 
     if (started) {
+        
+        t_video.join();
+        if (recordAudio)
+            t_audio.join();
+
         value = av_write_trailer(outAVFormatContext);
         if (value < 0) {
             cerr << "Error in writing av trailer" << endl;
@@ -101,10 +106,6 @@ ScreenRecorder::~ScreenRecorder() {
             cerr << "Error: unable to free VideoFormatContext" << endl;
             exit(-1);
         }
-
-        t_video.join();
-        if (recordAudio)
-            t_audio.join();
     }
 }
 
@@ -393,7 +394,11 @@ int ScreenRecorder::openAudioDevice() {
 int ScreenRecorder::initOutputFile() {
     value = 0;
     outputFile = const_cast<char *>("output.mp4");
+#if defined _WIN32
     string completePath = string(dir_path) + string("\\") + string(outputFile);
+#else
+    string completePath = string(dir_path) + string("/") + string(outputFile);
+#endif
 
     outAVFormatContext = nullptr;
     outputAVFormat = av_guess_format(nullptr, "output.mp4", nullptr);
@@ -941,8 +946,11 @@ int ScreenRecorder::captureVideoFrames() {
     int numPause = 0;
 
     int64_t numFrame = 0;
+#if defined _WIN32
     ofstream outFile{ "..\\media\\log.txt", ios::out };
-
+#else
+    ofstream outFile{ "media/log.txt", ios::out };
+#endif
     int frameIndex = 0;
     value = 0;
 

@@ -1,5 +1,12 @@
 # User ================================
 Ignore other user-defined file #
+media/output.mp4
+media/log.txt
+.vs/
+Project1/x64
+.idea/
+.DS_Store
+ScreenRecorder_pds
 
 # Clion ================================
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
@@ -126,8 +133,3 @@ cmake_install.cmake
 install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
-
-.DS_Store
-media/output.mp4
-media/log.txt
-ScreenRecorder_pds
