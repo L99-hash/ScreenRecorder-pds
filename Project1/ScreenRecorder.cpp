@@ -763,7 +763,7 @@ void ScreenRecorder::captureAudio() {
 
         //ul.lock();
         if (pauseCapture) {
-            cout << "Pause audio" << endl;
+            //cout << "Pause audio" << endl;
             endPause = true;
 #if defined _WIN32
             avformat_close_input(&inAudioFormatContext);
@@ -1023,6 +1023,8 @@ int ScreenRecorder::captureVideoFrames() {
     time(&startTime);
 
     startSeconds = difftime(startTime, 0);
+
+    cout << endl;
 
     while (true) {
         //ul.unlock();
