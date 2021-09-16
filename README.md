@@ -15,7 +15,7 @@ Dependencies:
 
 Before build the preject, perform: 
 - ```sudo apt-get update```
-- ```sudo apt-get install libavcodec-dev liavformat-dev libavfilter-dev libavutil-dev libavdevice-dev libswscale-dev libswresample-dev libx11-dev -y```
+- ```sudo apt-get install libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libavdevice-dev libswscale-dev libswresample-dev libx11-dev cmake pkg-config -y```
 
 To build and execute the project:
 - move in the project directory
