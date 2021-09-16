@@ -24,7 +24,7 @@ target_link_libraries(ScreenRecorder_pds
 
 IF(UNIX)
 target_link_libraries(ScreenRecorder_pds
-        -L/usr/X11R6/lib -I/usr/X11R6/include -lX11
+        ${ScreenRecorder_pds_LINK_LIBRARIES} X11
         )
 ENDIF(UNIX)
 IF(APPLE)
