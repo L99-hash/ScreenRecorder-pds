@@ -4,9 +4,9 @@ Screen recorder built using FFmpeg library. Project realized for System and Devi
 
 # Linux
 Dependencies:
-- libavcidec
+- libavcodec
 - libavformat
-- libavfiler
+- libavfilter
 - libavutil
 - libavdevice
 - libswscale
