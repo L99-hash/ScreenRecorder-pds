@@ -87,7 +87,7 @@ int main(){
             if (!screenRecorder.getStarted()) {
                 screenRecorder.setActiveMenu(false);
                 started = true;
-                screenRecorder.setStarted(started);
+                //screenRecorder.setStarted(started);
                 try{
                     screenRecorder.startRecording();
                 }
@@ -124,7 +124,10 @@ int main(){
             }
             break;
         case audio:
-            if (!screenRecorder.getStarted()) screenRecorder.setRecordAudio(true);
+            if (!screenRecorder.getStarted()) {
+                std::cout << "Audio enabled" << std::endl;
+                screenRecorder.setRecordAudio(true);
+            }
             else std::cout << "Command disabled during recording" << std::endl;
             break;
         case help:

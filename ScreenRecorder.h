@@ -74,14 +74,11 @@ extern "C"
 class error : std::exception {
 private:
     const char* desc;
-
-
 public:
     error(const char* description) : desc(description) {}
     const char* what() const noexcept {
         return desc;
     }
-
 };
 
 class ScreenRecorder {
@@ -130,6 +127,7 @@ class ScreenRecorder {
     int y_offset;
     int screen_width;
     int screen_height;
+    int64_t pts = 0;
 
     std::thread t_audio;
     std::thread t_video;
@@ -167,9 +165,9 @@ public:
     void generateVideoStream();
 
     void generateAudioStream();
-    void setStarted(bool val) {
+    /*void setStarted(bool val) {
         started = val;
-    }
+    }*/
     bool getStarted() {
         return started;
     }
@@ -182,14 +180,10 @@ public:
         activeMenu = val;
     }
 
-
     bool getDisabledMenu() {
         std::lock_guard<std::mutex> lg(mu);
         return disabledMenu;
     }
-
-
-
 
     bool getRecordAudio() {
         return recordAudio;
