@@ -1006,8 +1006,6 @@ int ScreenRecorder::captureVideoFrames() {
         exit(-1);
     }
 
-
-
     swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, outVideoCodecContext->pix_fmt, SWS_BICUBIC,
         nullptr, nullptr, nullptr);
 
@@ -1035,7 +1033,16 @@ int ScreenRecorder::captureVideoFrames() {
         unique_lock<mutex> ul(mu);
         if (pauseCapture) {
 
-
+#if defined linux
+        avformat_close_input(&pAVFormatContext);
+        if (pAVFormatContext == nullptr) {
+            cout << "pAVFormatContext close successfully" << endl;
+        }
+        else {
+            cerr << "Error: unable to close the pAVFormatContext" << endl;
+            exit(-1);
+        }
+#endif
 
             endPause = true;
             time(&startPause);
@@ -1061,6 +1068,51 @@ int ScreenRecorder::captureVideoFrames() {
         }
         cv.wait(ul, [this]() { return !pauseCapture; });   //pause capture (not busy waiting)
         if (endPause) {
+#if defined linux
+            string url = ":0.0+" + to_string(x_offset) + "," + to_string(y_offset);  //custom string to set the start point of the screen section
+            string dimension = to_string(width) + "x" + to_string(height);
+            av_dict_set(&videoOptions, "video_size", dimension.c_str(), 0);
+            value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &videoOptions);
+            
+            if (value != 0) {
+                cerr << "Error in opening input device (video)" << endl;
+                exit(-1);
+            }
+
+            value = avformat_find_stream_info(pAVFormatContext, nullptr);
+            if (value < 0) {
+                cerr << "Error in retrieving the stream info" << endl;
+                exit(-1);
+            }
+            
+            VideoStreamIndx = -1;
+            for (int i = 0; i < pAVFormatContext->nb_streams; i++) {
+                if (pAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+                    VideoStreamIndx = i;
+                    break;
+                }
+            }
+            if (VideoStreamIndx == -1) {
+                cerr << "Error: unable to find video stream index" << endl;
+                exit(-2);
+            }
+
+            pAVCodecContext = pAVFormatContext->streams[VideoStreamIndx]->codec;
+            //AVCodecParameters *params = pAVFormatContext->streams[VideoStreamIndx]->codecpar;
+            pAVCodec = avcodec_find_decoder(pAVCodecContext->codec_id/*params->codec_id*/);
+            if (pAVCodec == nullptr) {
+                cerr << "Error: unable to find decoder video" << endl;
+                exit(-1);
+            }
+
+            if (avcodec_open2(pAVCodecContext, pAVCodec, nullptr) < 0) {
+                cerr << "Could not open codec" << endl;
+                exit(-1);
+            }
+
+            swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, outVideoCodecContext->pix_fmt, SWS_BICUBIC,
+                nullptr, nullptr, nullptr);
+#endif
             endPause = false;
             time(&stopPause);
             pauseTime = difftime(stopPause, startPause);

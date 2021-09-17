@@ -7,6 +7,7 @@ Project1/x64
 .DS_Store
 ScreenRecorder_pds
 *.cbp
+.vscode/
 
 # Clion ================================
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
