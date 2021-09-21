@@ -135,65 +135,45 @@ class ScreenRecorder {
     std::string deviceName;
 #endif
 
-public:
-
     std::condition_variable cv;
     std::mutex mu;
     std::mutex write_lock;
-    bool pauseCapture;
-    bool stopCapture;
     bool activeMenu;
     bool disabledMenu;
     bool started = false;
-    ScreenRecorder();
-    ~ScreenRecorder();
+
     int openVideoDevice() throw();
-    int initOutputFile();
-    int captureVideoFrames();
-    void captureAudio();
+    int openAudioDevice() throw();
+    int initOutputFile() throw();
+    void generateVideoStream() throw();
+    void generateAudioStream() throw();
+
     int initConvertedSamples(uint8_t*** converted_input_samples, AVCodecContext* output_codec_context, int frame_size);
     int add_samples_to_fifo(uint8_t** converted_input_samples, const int frame_size);
     int init_fifo();
-    int openAudioDevice();
-    void startRecording();
+
+    int captureVideoFrames();
+    void captureAudio();
+
+public:
+    bool pauseCapture;
+    bool stopCapture;
+    ScreenRecorder();
+    ~ScreenRecorder();
+    void startRecording() throw();
     void stopCommand();
     void pauseCommand();
     void resumeCommand();
     void setScreenDimension(int width, int height);
     void setScreenOffset(int x_offset, int y_offset);
 
-    void generateVideoStream();
-
-    void generateAudioStream();
-    /*void setStarted(bool val) {
-        started = val;
-    }*/
-    bool getStarted() {
-        return started;
-    }
-    bool getActiveMenu() {
-        std::lock_guard<std::mutex> lg(mu);
-        return activeMenu;
-    }
-    void setActiveMenu(bool val) {
-        std::lock_guard<std::mutex> lg(mu);
-        activeMenu = val;
-    }
-
-    bool getDisabledMenu() {
-        std::lock_guard<std::mutex> lg(mu);
-        return disabledMenu;
-    }
-
-    bool getRecordAudio() {
-        return recordAudio;
-    };
-    void setRecordAudio(bool val) {
-        recordAudio = val;
-    }
-    void setOutputDir(const char* dir) {
-        dir_path = dir;
-    }
+    bool getStarted();
+    bool getActiveMenu();
+    void setActiveMenu(bool val);
+    bool getDisabledMenu();
+    bool getRecordAudio();
+    void setRecordAudio(bool val);
+    void setOutputDir(const char* dir);
 };
 
 

@@ -23,16 +23,21 @@ bool justPause = false;
 void stopSignalHandler(int signum){
     std::cout << "\nInterrupt signal (" << signum << ") received.\n";
 
-    if (!screenRecorder.getActiveMenu()) {
+    if(screenRecorder.getStarted()){
+        if (!screenRecorder.getActiveMenu()) {
         screenRecorder.setActiveMenu(true);
 
         while (!screenRecorder.getDisabledMenu()) ;
         justPause = true;
         std::cout << "Insert command: " << std::flush;
+        }
+        else {
+            justPause = false;
+            screenRecorder.setActiveMenu(false);
+        }
     }
-    else {
-        justPause = false;
-        screenRecorder.setActiveMenu(false);
+    else{
+        std::cout << "\nInsert command: " << std::flush;
     }
 }
 
@@ -49,7 +54,7 @@ void showCommands(){
     std::cout << "start --> begin registration" << std::endl;
     std::cout << "pause --> pause registration" << std::endl;
     std::cout << "resume --> resume registration after pause" << std::endl;
-    std::cout << "stop --> stop registration" << std::endl;
+    std::cout << "stop --> stop registration and exit" << std::endl;
     std::cout << "dim --> set screen section to record" << std::endl;
     std::cout << "offset --> set top left point of screen section to record" << std::endl;
     std::cout << "out --> set output direcotry (relative or absolute path)" << std::endl;
@@ -60,7 +65,7 @@ int main(){
     std::string cmd, dir;
     int w, h, x_off, y_off;
     bool endWhile = false;
-    bool started = false;
+    //bool started = false;
     bool inPause = false;
 
     showCommands();
@@ -76,7 +81,7 @@ int main(){
         switch (c) {
 
         case stop:
-            if (started){
+            if (screenRecorder.getStarted()){
                 screenRecorder.stopCommand();
             }
 
@@ -86,7 +91,7 @@ int main(){
         case start:
             if (!screenRecorder.getStarted()) {
                 screenRecorder.setActiveMenu(false);
-                started = true;
+                //started = true;
                 //screenRecorder.setStarted(started);
                 try{
                     screenRecorder.startRecording();
@@ -102,7 +107,7 @@ int main(){
             break;
         case pause:
             justPause = false;
-            if (started){
+            if (screenRecorder.getStarted()){
                 screenRecorder.pauseCommand();
                 inPause = true;
                 while (!screenRecorder.getDisabledMenu());
