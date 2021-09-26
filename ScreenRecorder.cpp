@@ -637,64 +637,6 @@ int ScreenRecorder::captureVideoFrames() {
 
         if (av_read_frame(pAVFormatContext, pAVPacket) >= 0 && pAVPacket->stream_index == VideoStreamIndx) {
             av_packet_rescale_ts(pAVPacket, pAVFormatContext->streams[VideoStreamIndx]->time_base, pAVCodecContext->time_base);
-            /////////////////////////////////////////////////////////////////////
-            /*if ((value = avcodec_send_packet(pAVCodecContext, pAVPacket)) < 0) {
-                cout << "Cannot decode current video packet" << endl;
-                continue;
-            }
-            while(value >= 0){
-                value = avcodec_receive_frame(pAVCodecContext, pAVFrame);
-                if(value == AVERROR(EAGAIN) || value == AVERROR_EOF){
-                    break;
-                }
-                else if(value < 0){
-                    cerr << "Error during decoding" << endl;
-                    exit(-1);
-                }
-                if(outAVFormatContext->streams[outVideoStreamIndex]->start_time <= 0){
-                    outAVFormatContext->streams[outVideoStreamIndex]->start_time = pAVFrame->pts;
-                }
-                av_init_packet(&outPacket);
-                outPacket.data = nullptr;
-                outPacket.size = 0;
-                outFrame->width = outVideoCodecContext->width;
-                outFrame->height = outVideoCodecContext->height;
-                outFrame->format = outVideoCodecContext->pix_fmt;
-                outFrame->pts = pAVFrame->pts;
-                outFrame->pkt_dts = pAVFrame->pkt_dts;
-                outFrame->best_effort_timestamp = pAVFrame->best_effort_timestamp;
-                sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
-                if(avcodec_send_frame(outVideoCodecContext, outFrame) < 0){
-                    cerr << "cannot encode current video packet" << endl;
-                    exit(-1);
-                }
-                while(value >= 0){
-                    value = avcodec_receive_packet(outVideoCodecContext, &outPacket);
-                    if(value == AVERROR(EAGAIN) || value == AVERROR_EOF){
-                        break;
-                    }
-                    else if(value < 0){
-                        cerr << "Error during encoding" << endl;
-                        exit(-1);
-                    }
-                    if(outPacket.pts != AV_NOPTS_VALUE){
-                        outPacket.pts = av_rescale_q(outPacket.pts, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
-                    }
-                    if(outPacket.dts != AV_NOPTS_VALUE){
-                        outPacket.dts = av_rescale_q(outPacket.dts, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
-                    }
-                    outPacket.stream_index = outVideoStreamIndex;
-                    write_lock.lock();
-                    if(av_write_frame(outAVFormatContext, &outPacket) != 0){
-                        cerr << "Error in writing video frame" << endl;
-                    }
-                    write_lock.unlock();
-                    av_packet_unref(&outPacket);
-                }
-                av_packet_unref(&outPacket);
-                av_free_packet(pAVPacket);
-            }*/
-            //////////////////////////////////////////////////////////////////////
             value = avcodec_decode_video2(pAVCodecContext, pAVFrame, &frameFinished, pAVPacket);
             if (value < 0) {
                 cout << "Unable to decode video" << endl;
@@ -706,7 +648,6 @@ int ScreenRecorder::captureVideoFrames() {
 
                 numFrame++;
 
-                //sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
                 av_init_packet(&outPacket);
                 outPacket.data = nullptr;
                 outPacket.size = 0;
