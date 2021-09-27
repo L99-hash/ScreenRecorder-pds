@@ -4,7 +4,7 @@
 #include <csignal>
 #include <vector>
 
-enum Command{
+enum Command {
     stop,
     start,
     pause,
@@ -20,23 +20,28 @@ std::vector<std::string> commands{ "stop", "start", "pause", "resume", "audio", 
 ScreenRecorder screenRecorder;
 bool justPause = false;
 
-void stopSignalHandler(int signum){
+void stopSignalHandler(int signum) {
     std::cout << "\nInterrupt signal (" << signum << ") received.\n";
 
-    if (!screenRecorder.getActiveMenu()) {
-        screenRecorder.setActiveMenu(true);
+    if (screenRecorder.getStarted()) {
+        if (!screenRecorder.getActiveMenu()) {
+            screenRecorder.setActiveMenu(true);
 
-        while (!screenRecorder.getDisabledMenu()) ;
-        justPause = true;
-        std::cout << "Insert command: " << std::flush;
+            while (!screenRecorder.getDisabledMenu());
+            justPause = true;
+            std::cout << "Insert command: " << std::flush;
+        }
+        else {
+            justPause = false;
+            screenRecorder.setActiveMenu(false);
+        }
     }
     else {
-        justPause = false;
-        screenRecorder.setActiveMenu(false);
+        std::cout << "\nInsert command: " << std::flush;
     }
 }
 
-Command stringToInt(std::string cmd){
+Command stringToInt(std::string cmd) {
     int len = commands.size();
     for (int i = 0; i < len; i++)
         if (cmd == commands[i])
@@ -44,23 +49,23 @@ Command stringToInt(std::string cmd){
     return static_cast<Command>(-1);
 }
 
-void showCommands(){
+void showCommands() {
     std::cout << "Commands: " << std::endl;
     std::cout << "start --> begin registration" << std::endl;
     std::cout << "pause --> pause registration" << std::endl;
     std::cout << "resume --> resume registration after pause" << std::endl;
-    std::cout << "stop --> stop registration" << std::endl;
+    std::cout << "stop --> stop registration and exit" << std::endl;
     std::cout << "dim --> set screen section to record" << std::endl;
     std::cout << "offset --> set top left point of screen section to record" << std::endl;
     std::cout << "out --> set output direcotry (relative or absolute path)" << std::endl;
     std::cout << "help --> show all commands" << std::endl;
     std::cout << "ctrl + c --> show menu while recording" << std::endl;
 }
-int main(){
+int main() {
     std::string cmd, dir;
     int w, h, x_off, y_off;
     bool endWhile = false;
-    bool started = false;
+    //bool started = false;
     bool inPause = false;
 
     showCommands();
@@ -76,7 +81,7 @@ int main(){
         switch (c) {
 
         case stop:
-            if (started){
+            if (screenRecorder.getStarted()) {
                 screenRecorder.stopCommand();
             }
 
@@ -86,34 +91,34 @@ int main(){
         case start:
             if (!screenRecorder.getStarted()) {
                 screenRecorder.setActiveMenu(false);
-                started = true;
-                screenRecorder.setStarted(started);
-                try{
+                //started = true;
+                //screenRecorder.setStarted(started);
+                try {
                     screenRecorder.startRecording();
                 }
-                catch (std::exception e){
+                catch (std::exception e) {
                     std::cout << e.what() << std::endl;
                     exit(-1);
                 }
             }
-            else{
+            else {
                 std::cout << "Already started." << std::endl;
             }
             break;
         case pause:
             justPause = false;
-            if (started){
+            if (screenRecorder.getStarted()) {
                 screenRecorder.pauseCommand();
                 inPause = true;
                 while (!screenRecorder.getDisabledMenu());
                 std::cout << "Pause recording" << std::endl;
             }
-            else{
+            else {
                 std::cout << "Not yet started!" << std::endl;
             }
             break;
         case resume:
-            if (inPause){
+            if (inPause) {
                 std::cout << "Resume recording" << std::endl;
                 screenRecorder.setActiveMenu(false);
                 inPause = false;
@@ -124,7 +129,10 @@ int main(){
             }
             break;
         case audio:
-            if (!screenRecorder.getStarted()) screenRecorder.setRecordAudio(true);
+            if (!screenRecorder.getStarted()) {
+                std::cout << "Audio enabled" << std::endl;
+                screenRecorder.setRecordAudio(true);
+            }
             else std::cout << "Command disabled during recording" << std::endl;
             break;
         case help:

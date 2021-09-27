@@ -6,9 +6,8 @@
 
 using namespace std;
 
-//atomic<bool> activeMenu{ false };
-
 //Show Dshow Device
+//used on Windows to select the audio device
 void show_dshow_device() {
     AVFormatContext* pFormatCtx = avformat_alloc_context();
     AVDictionary* options = NULL;
@@ -19,6 +18,7 @@ void show_dshow_device() {
     printf("================================\n");
 }
 
+//Show AVFoundation Device
 void show_avfoundation_device() {
     AVFormatContext* pFormatCtx = avformat_alloc_context();
     AVDictionary* options = NULL;
@@ -29,12 +29,13 @@ void show_avfoundation_device() {
     printf("=============================\n");
 }
 
+//get dimensions of main desktop
 void getScreenResolution(int& width, int& height) {
 #if defined __APPLE__
-    //Display* disp = XOpenDisplay(NULL);
-    //Screen* scrn = DefaultScreenOfDisplay(disp);
-    width = 2880;//scrn->width;
-    height = 1800;//scrn->height;
+    Display* disp = XOpenDisplay(NULL);
+    Screen* scrn = DefaultScreenOfDisplay(disp);
+    width = scrn->width;
+    height = scrn->height;
 #endif
 #if defined _WIN32
     width = (int)GetSystemMetrics(SM_CXSCREEN);
@@ -48,7 +49,7 @@ void getScreenResolution(int& width, int& height) {
 #endif
 }
 
-ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true), recordAudio(false), dir_path(nullptr), disabledMenu(false) {
+ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true), recordAudio(false), disabledMenu(false) {
     avcodec_register_all();
     avdevice_register_all();
 #if defined _WIN32
@@ -59,27 +60,28 @@ ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), star
     screen_height = height;
     screen_width = width;
 
-    cout << width << "x" << height << endl;
-    //getScreenResolution(screen_width, screen_height);
+    cout << "Main desktop: " << width << "x" << height << endl;
+
+    dir_path = ".";
 
     x_offset = 0;
     y_offset = 0;
 }
 
 ScreenRecorder::~ScreenRecorder() {
-
     if (started) {
-
         t_video.join();
         if (recordAudio)
             t_audio.join();
 
+        //complete write on file
         value = av_write_trailer(outAVFormatContext);
         if (value < 0) {
             cerr << "Error in writing av trailer" << endl;
             exit(-1);
         }
 
+        //close input device for audio
         avformat_close_input(&inAudioFormatContext);
         if (inAudioFormatContext == nullptr) {
             cout << "inAudioFormatContext close successfully" << endl;
@@ -97,6 +99,7 @@ ScreenRecorder::~ScreenRecorder() {
             exit(-1);
         }
 
+        //close input device for video
         avformat_close_input(&pAVFormatContext);
         if (pAVFormatContext == nullptr) {
             cout << "File close successfully" << endl;
@@ -105,7 +108,6 @@ ScreenRecorder::~ScreenRecorder() {
             cerr << "Error: unable to close the file" << endl;
             exit(-1);
         }
-
         avformat_free_context(pAVFormatContext);
         if (pAVFormatContext == nullptr) {
             cout << "VideoFormat freed successfully" << endl;
@@ -117,6 +119,7 @@ ScreenRecorder::~ScreenRecorder() {
     }
 }
 
+//permits to stop recording
 void ScreenRecorder::stopCommand() {
     unique_lock<mutex> ul(mu);
     stopCapture = true;
@@ -125,12 +128,14 @@ void ScreenRecorder::stopCommand() {
     cv.notify_all();
 }
 
+//permits to pause recording in order to be resumed later
 void ScreenRecorder::pauseCommand() {
     unique_lock<mutex> ul(mu);
     if (!pauseCapture)
         pauseCapture = true;
 }
 
+//permits to resume paused recording
 void ScreenRecorder::resumeCommand() {
     unique_lock<mutex> ul(mu);
     if (pauseCapture) {
@@ -139,6 +144,45 @@ void ScreenRecorder::resumeCommand() {
     }
 }
 
+//read if recording is started or not
+bool ScreenRecorder::getStarted() {
+    return started;
+}
+
+//read if menu is active or not (thread safe)
+bool ScreenRecorder::getActiveMenu() {
+    std::lock_guard<std::mutex> lg(mu);
+    return activeMenu;
+}
+
+//comunicate that the menu has been activated (thread safe)
+void ScreenRecorder::setActiveMenu(bool val) {
+    std::lock_guard<std::mutex> lg(mu);
+    activeMenu = val;
+}
+
+//read if menu is disabled
+bool ScreenRecorder::getDisabledMenu() {
+    std::lock_guard<std::mutex> lg(mu);
+    return disabledMenu;
+}
+
+//read if audio is enabled r not
+bool ScreenRecorder::getRecordAudio() {
+    return recordAudio;
+};
+
+//permits to enable audio recording
+void ScreenRecorder::setRecordAudio(bool val) {
+    recordAudio = val;
+}
+
+//permits to set output directory (defuault: .)
+void ScreenRecorder::setOutputDir(const char* dir) {
+    dir_path = dir;
+}
+
+//overide screen dimension to record (default->desktop dimension)
 void ScreenRecorder::setScreenDimension(int width, int height) {
     this->width = width;
     this->height = height;
@@ -146,6 +190,7 @@ void ScreenRecorder::setScreenDimension(int width, int height) {
     cout << "Screen dimension setted correctly" << endl;
 }
 
+//override screen offset (default->x=0, y=0)
 void ScreenRecorder::setScreenOffset(int x_offset, int y_offset) {
     this->x_offset = x_offset;
     this->y_offset = y_offset;
@@ -153,8 +198,104 @@ void ScreenRecorder::setScreenOffset(int x_offset, int y_offset) {
     cout << "Screen offset setted correctly" << endl;
 }
 
+//initialize the output file
+int ScreenRecorder::initOutputFile() throw() {
+    value = 0;
+    outputFile = const_cast<char*>("output.mp4");
+#if defined _WIN32
+    string completePath = string(dir_path) + string("\\") + string(outputFile);
+#else
+    string completePath = string(dir_path) + string("/") + string(outputFile);
+#endif
+
+    outAVFormatContext = nullptr;
+    outputAVFormat = av_guess_format(nullptr, "output.mp4", nullptr);
+    if (outputAVFormat == nullptr) {
+
+        throw error("Error in guessing the video format, try with correct format");
+    }
+
+    //avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, nullptr, outputFile);  //for just video, we used this
+    avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, outputAVFormat->name, const_cast<char*>(completePath.c_str()));
+
+    if (outAVFormatContext == nullptr) {
+
+        throw error("Error in allocating outAVFormatContext");
+    }
+
+    /*===========================================================================*/
+    try {
+        this->generateVideoStream();
+        if (recordAudio) this->generateAudioStream();
+    }
+    catch (exception e) {
+        throw e;
+    }
+
+    //create an empty video file
+    if (!(outAVFormatContext->flags & AVFMT_NOFILE)) {
+        if (avio_open2(&outAVFormatContext->pb, const_cast<char*>(completePath.c_str()), AVIO_FLAG_WRITE, nullptr, &videoOptions) < 0) {
+
+            throw error("Error in creating the video file");
+        }
+    }
+
+    if (outAVFormatContext->nb_streams == 0) {
+
+        throw error("Error in creating the video file");
+    }
+
+    value = avformat_write_header(outAVFormatContext, &videoOptions);
+    if (value < 0) {
+
+        throw error("Error in writing the header context");
+    }
+
+    return 0;
+}
+
+//start recording (audio is optional)
+//open devices ans initialize the output file
+void ScreenRecorder::startRecording() throw() {
+    if ((width + x_offset) > screen_width || (height + y_offset) > screen_height) {
+        cout << "Diemensions of screen section setted are too large for the screen.";
+        setActiveMenu(true);
+
+        return;
+    }
+
+    try {
+        if (recordAudio) openAudioDevice();
+        openVideoDevice();
+        initOutputFile();
+    }
+    catch (error e) {
+        throw e;
+    }
+
+    //detect possible exception during lauch threads
+    try {
+        started = true;
+        t_video = std::move(std::thread{ [this]() {
+            this->captureVideoFrames();
+        }
+            });
+        if (recordAudio) {
+            t_audio = std::move(std::thread{ [this]() {
+                this->captureAudio();
+            }
+                });
+        }
+    }
+    catch (exception e) {
+        started = false;
+        throw e;
+    }
+}
+
 /*==================================== VIDEO ==============================*/
 
+//open input video device
 int ScreenRecorder::openVideoDevice() throw() {
     value = 0;
     videoOptions = nullptr;
@@ -167,17 +308,17 @@ int ScreenRecorder::openVideoDevice() throw() {
     av_dict_set(&videoOptions, "video_size", dimension.c_str(), 0);   //option to set the dimension of the screen section to record
     value = av_dict_set(&videoOptions, "framerate", "25", 0);
     if (value < 0) {
-        cerr << "Error in setting dictionary value (setting framerate)" << endl;
-        exit(-1);
+
+        throw error("Error in setting dictionary value (setting framerate)");
     }
 
     value = av_dict_set(&videoOptions, "preset", "ultrafast", 0);
     if (value < 0) {
-        cerr << "Error in setting dictionary value (setting preset value)" << endl;
-        exit(-1);
+
+        throw error("Error in setting dictionary value (setting preset value)");
     }
 #ifdef _WIN32
-    //AVDictionary* opt = nullptr;
+
     pAVInputFormat = av_find_input_format("gdigrab");
     //Set some options
     //grabbing frame rate
@@ -206,22 +347,15 @@ int ScreenRecorder::openVideoDevice() throw() {
     //AVDictionary* opt = nullptr;
     //int offset_x = 0, offset_y = 0;
     string url = ":0.0+" + to_string(x_offset) + "," + to_string(y_offset);  //custom string to set the start point of the screen section
-    //string dimension = to_string(width) + "x" + to_string(height);
-    //av_dict_set(&opt,"video_size",dimension.c_str(),0);   //option to set the dimension of the screen section to record
+
     pAVInputFormat = av_find_input_format("x11grab");
     value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &videoOptions);
 
     if (value != 0) {
-        cerr << "Error in opening input device (video)" << endl;
-        exit(-1);
-        //throw error("Error in opening input device");
+
+        throw error("Error in opening input device");
     }
-    //get video stream infos from context
-    /*value = avformat_find_stream_info(pAVFormatContext, nullptr);
-    if (value < 0) {
-        cout << "\nCannot find the stream information";
-        exit(1);
-    }*/
+
 #else
 
     show_avfoundation_device();
@@ -231,69 +365,31 @@ int ScreenRecorder::openVideoDevice() throw() {
         to_string(y_offset)).c_str(), 0);
 
     if (value < 0) {
-        cerr << "Error in setting crop" << endl;
-        exit(-1);
+
+        throw error("Error in setting crop");
     }
 
-    /*value = av_dict_set(&videoOptions,"offset_x",to_string(x_offset).c_str(), 0);
-    if(value < 0){
-        cerr << "Error in setting offset_x" <<endl;
-        exit(-1);
-    }
-    //The distance from the top edge of the screen or desktop
-    value = av_dict_set(&videoOptions,"offset_y",to_string(y_offset).c_str(), 0);
-    if(value < 0){
-        cerr << "Error in setting offset_y" <<endl;
-        exit(-1);
-    }
-     */
+
     value = av_dict_set(&videoOptions, "pixel_format", "yuv420p", 0);
     if (value < 0) {
-        cerr << "Error in setting pixel format" << endl;
-        exit(-1);
+
+        throw error("Error in setting pixel format");
     }
 
 
-    //value = av_dict_set(&options, "video_device_index", "1", 0);
-    /*
-    if(value < 0){
-        cerr << "Error in setting video device index" <<endl;
-        exit(-1);
-    }
-    */
     pAVInputFormat = av_find_input_format("avfoundation");
 
     if (avformat_open_input(&pAVFormatContext, "1:none", pAVInputFormat, &videoOptions) != 0) {
-        cerr << "Error in opening input device" << endl;
-        exit(-1);
+
+        throw error("Error in opening input device");
     }
-
-
-
-
 #endif
-    //set frame per second
 
-
-    /*
-    value = av_dict_set(&options, "vsync", "1", 0);
-    if(value < 0){
-        cerr << "Error in setting dictionary value (setting vsync value)" << endl;
-        exit(-1);
-    }
-    */
-    /*
-    value = av_dict_set(&options, "probesize", "60M", 0);
-    if (value < 0) {
-        cerr << "Error in setting probesize value" << endl;
-        exit(-1);
-    }
-    */
     //get video stream infos from context
     value = avformat_find_stream_info(pAVFormatContext, nullptr);
     if (value < 0) {
-        cerr << "Error in retrieving the stream info" << endl;
-        exit(-1);
+
+        throw error("Error in retrieving the stream info");
     }
 
     VideoStreamIndx = -1;
@@ -304,205 +400,39 @@ int ScreenRecorder::openVideoDevice() throw() {
         }
     }
     if (VideoStreamIndx == -1) {
-        cerr << "Error: unable to find video stream index" << endl;
-        exit(-2);
+
+        throw error("Error: unable to find video stream index");
     }
 
     pAVCodecContext = pAVFormatContext->streams[VideoStreamIndx]->codec;
-    //AVCodecParameters *params = pAVFormatContext->streams[VideoStreamIndx]->codecpar;
+
     pAVCodec = avcodec_find_decoder(pAVCodecContext->codec_id/*params->codec_id*/);
     if (pAVCodec == nullptr) {
-        cerr << "Error: unable to find decoder video" << endl;
-        exit(-1);
+
+        throw error("Error: unable to find decoder video");
     }
-
-
-    //pAVCodecContext = avcodec_alloc_context3(pAVCodec);
-    //avcodec_parameters_to_context(pAVCodecContext, params);
-
-    /*int h, w;
-    cout << "Insert height and width [h w]: ";   //custom screen dimension to record
-    cin >> h >> w;*/
-
 
 
     return 0;
 }
 
-/*==========================================  AUDIO  ============================*/
-
-int ScreenRecorder::openAudioDevice() {
-    audioOptions = nullptr;
-    inAudioFormatContext = nullptr;
-
-    inAudioFormatContext = avformat_alloc_context();
-    value = av_dict_set(&audioOptions, "sample_rate", "44100", 0);
-    if (value < 0) {
-        cerr << "Error: cannot set audio sample rate" << endl;
-        exit(-1);
-    }
-    value = av_dict_set(&audioOptions, "async", "25", 0);
-    if (value < 0) {
-        cerr << "Error: cannot set audio sample rate" << endl;
-        exit(-1);
-    }
-
-#if defined linux
-    audioInputFormat = av_find_input_format("alsa");
-    value = avformat_open_input(&inAudioFormatContext, "hw:0", audioInputFormat, &audioOptions);
-    //audioInputFormat = av_find_input_format("pulse");
-    //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
-    if (value != 0) {
-        cerr << "Error in opening input device (audio)" << endl;
-        exit(-1);
-        //throw error("Error in opening input device");
-    }
-#endif
-
-#if defined _WIN32
-    show_dshow_device();
-    cout << "\nPlease select the audio device among those listed before: ";
-    getchar();
-    getline(cin, deviceName);
-    deviceName = "audio=" + deviceName;
-
-    audioInputFormat = av_find_input_format("dshow");
-    value = avformat_open_input(&inAudioFormatContext, deviceName.c_str(), audioInputFormat, &audioOptions);
-    //audioInputFormat = av_find_input_format("pulse");
-    //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
-    if (value != 0) {
-        cerr << "Error in opening input device (audio)" << endl;
-        exit(-1);
-        //throw error("Error in opening input device");
-    }
-#endif
-
-#if defined __APPLE__
-    audioInputFormat = av_find_input_format("avfoundation");
-    value = avformat_open_input(&inAudioFormatContext, "none:0", audioInputFormat, &audioOptions);
-#endif
-
-    value = avformat_find_stream_info(inAudioFormatContext, nullptr);
-    if (value != 0) {
-        cerr << "Error: cannot find the audio stream information" << endl;
-        exit(-1);
-    }
-
-    audioStreamIndx = -1;
-    for (int i = 0; i < inAudioFormatContext->nb_streams; i++) {
-        if (inAudioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-            audioStreamIndx = i;
-            break;
-        }
-    }
-    if (audioStreamIndx == -1) {
-        cerr << "Error: unable to find audio stream index" << endl;
-        exit(-2);
-    }
-}
-
-int ScreenRecorder::initOutputFile() {
-    value = 0;
-    outputFile = const_cast<char*>("output.mp4");
-#if defined _WIN32
-    string completePath = string(dir_path) + string("\\") + string(outputFile);
-#else
-    string completePath = string(dir_path) + string("/") + string(outputFile);
-#endif
-
-    outAVFormatContext = nullptr;
-    outputAVFormat = av_guess_format(nullptr, "output.mp4", nullptr);
-    if (outputAVFormat == nullptr) {
-        cerr << "Error in guessing the video format, try with correct format" << endl;
-        exit(-5);
-    }
-
-    //avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, nullptr, outputFile);  //for just video, we used this
-    avformat_alloc_output_context2(&outAVFormatContext, outputAVFormat, outputAVFormat->name, const_cast<char*>(completePath.c_str()));
-
-    if (outAVFormatContext == nullptr) {
-        cerr << "Error in allocating outAVFormatContext" << endl;
-        exit(-4);
-    }
-
-    /*===========================================================================*/
-    this->generateVideoStream();
-    if (recordAudio) this->generateAudioStream();
-
-    //create an empty video file
-    if (!(outAVFormatContext->flags & AVFMT_NOFILE)) {
-        if (avio_open2(&outAVFormatContext->pb, const_cast<char*>(completePath.c_str()), AVIO_FLAG_WRITE, nullptr, &videoOptions) < 0) {
-            cerr << "Error in creating the video file" << endl;
-            exit(-10);
-        }
-    }
-
-    if (outAVFormatContext->nb_streams == 0) {
-        cerr << "Output file does not contain any stream" << endl;
-        exit(-11);
-    }
-
-    value = avformat_write_header(outAVFormatContext, &videoOptions);
-    if (value < 0) {
-        cerr << "Error in writing the header context" << endl;
-        exit(-12);
-    }
-
-    return 0;
-}
-
-void ScreenRecorder::startRecording() {
-    if (dir_path == nullptr) {
-        cout << "Output direcotry not set. Set it before start recording." << endl;
-        setActiveMenu(true);
-        setStarted(false);
-        return;
-    }
-
-    if ((width + x_offset) > screen_width || (height + y_offset) > screen_height) {
-        cout << "Diemensions of screen section setted are too large for the screen.";
-        setActiveMenu(true);
-        setStarted(false);
-        return;
-    }
-
-    if (recordAudio) openAudioDevice();
-    openVideoDevice();
-    initOutputFile();
-    t_video = std::move(std::thread{ [this]() {
-        this->captureVideoFrames();
-    }
-        });
-    if (recordAudio) {
-        t_audio = std::move(std::thread{ [this]() {
-            this->captureAudio();
-        }
-            });
-    }
-}
-
-/*===================================  VIDEO  ==================================*/
-
-void ScreenRecorder::generateVideoStream() {
+//find information for video stream
+//called by initOutputFile()
+void ScreenRecorder::generateVideoStream() throw() {
     outVideoCodec = avcodec_find_encoder(AV_CODEC_ID_H264);  //AV_CODEC_ID_MPEG4
     if (outVideoCodec == nullptr) {
-        cerr << "Error in finding the AVCodec, try again with the correct codec" << endl;
-        exit(-8);
+
+        throw error("Error in finding the AVCodec, try again with the correct codec");
     }
 
     //Generate video stream
     videoSt = avformat_new_stream(outAVFormatContext, outVideoCodec);
     if (videoSt == nullptr) {
-        cerr << "Error in creating AVFormatStream" << endl;
-        exit(-6);
+
+        throw error("Error in creating AVFormatStream");
     }
 
-    //outVideoCodec = nullptr;   //avoid segmentation fault on call avcodec_alloc_context3(outAVCodec)
-    /*outVideoCodecContext = avcodec_alloc_context3(outVideoCodec);
-    if (outVideoCodecContext == nullptr) {
-        cerr << "Error in allocating the codec context" << endl;
-        exit(-7);
-    }*/
+
 
     //set properties of the video file (stream)
     outVideoCodecContext = videoSt->codec;
@@ -538,8 +468,8 @@ void ScreenRecorder::generateVideoStream() {
 
     value = avcodec_open2(outVideoCodecContext, outVideoCodec, nullptr);
     if (value < 0) {
-        cerr << "Error in opening the AVCodec" << endl;
-        exit(-9);
+
+        throw error("Error in opening the AVCodec");
     }
 
     outVideoStreamIndex = -1;
@@ -549,32 +479,343 @@ void ScreenRecorder::generateVideoStream() {
         }
     }
     if (outVideoStreamIndex < 0) {
-        cerr << "Error: cannot find a free stream index for video output" << endl;
-        exit(-1);
+
+        throw error("Error: cannot find a free stream index for video output");
     }
     avcodec_parameters_from_context(outAVFormatContext->streams[outVideoStreamIndex]->codecpar, outVideoCodecContext);
 }
 
-/*===============================  AUDIO  ==================================*/
+//executed in a second thread to record video
+int ScreenRecorder::captureVideoFrames() {
+    int64_t pts = 0;
+    int flag;
+    int frameFinished = 0;
+    bool endPause = false;
+    int numPause = 0;
 
-void ScreenRecorder::generateAudioStream() {
-    //inAudioCodecContext = inAudioFormatContext->streams[audioStreamIndx]->codec;
+    int64_t numFrame = 0;
+
+    int frameIndex = 0;
+    value = 0;
+
+    pAVPacket = (AVPacket*)av_malloc(sizeof(AVPacket));
+    if (pAVPacket == nullptr) {
+        cerr << "Error in allocating AVPacket" << endl;
+        exit(-1);
+        //throw error("Error in allocating AVPacket");
+    }
+
+    pAVFrame = av_frame_alloc();
+    if (pAVFrame == nullptr) {
+        cerr << "Error: unable to alloc the AVFrame resources" << endl;
+        exit(-1);
+        //throw error("Error: unable to alloc the AVFrame resources");
+    }
+
+
+    outFrame = av_frame_alloc();
+    if (outFrame == nullptr) {
+        cerr << "Error: unable to alloc the AVFrame resources for out frame" << endl;
+        exit(-1);
+        //throw error("Error: unable to alloc the AVFrame resources for out frame");
+    }
+
+    int videoOutBuffSize;
+    int nBytes = av_image_get_buffer_size(outVideoCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, 32);
+    uint8_t* videoOutBuff = (uint8_t*)av_malloc(nBytes);
+
+    if (videoOutBuff == nullptr) {
+        cerr << "Error: unable to allocate memory" << endl;
+        exit(-1);
+        //throw error("Error: unable to allocate memory");
+    }
+
+    value = av_image_fill_arrays(outFrame->data, outFrame->linesize, videoOutBuff, AV_PIX_FMT_YUV420P, outVideoCodecContext->width, outVideoCodecContext->height, 1);
+    if (value < 0) {
+        cerr << "Error in filling image array" << endl;
+    }
+
+    SwsContext* swsCtx_;
+
+    if (avcodec_open2(pAVCodecContext, pAVCodec, nullptr) < 0) {
+        cerr << "Could not open codec" << endl;
+        exit(-1);
+    }
+
+    swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, outVideoCodecContext->pix_fmt, SWS_BICUBIC,
+        nullptr, nullptr, nullptr);
+
+
+    cout << "pVCodec Context width: height " << pAVCodecContext->width << " " << pAVCodecContext->height << endl;
+    cout << "outVideoCodecContext width: height " << outVideoCodecContext->width << " " << outVideoCodecContext->height << endl;
+    AVPacket outPacket;
+    int gotPicture;
+
+    double pauseTime, startSeconds, precSeconds = 0;
+    time_t startPause, stopPause;
+    time_t startTime;
+    time(&startTime);
+
+    startSeconds = difftime(startTime, 0);
+
+    cout << endl;
+
+    while (true) {
+        unique_lock<mutex> ul(mu);
+        if (pauseCapture) {
+
+#if defined linux
+            avformat_close_input(&pAVFormatContext);
+            if (pAVFormatContext != nullptr) {
+                cerr << "Error: unable to close the pAVFormatContext (before pause)" << endl;
+                exit(-1);
+            }
+#endif
+            endPause = true;
+            time(&startPause);
+            numPause++;
+
+        }
+        cv.wait(ul, [this]() { return !pauseCapture; });   //pause capture (not busy waiting)
+        if (endPause) {
+#if defined linux
+            string url = ":0.0+" + to_string(x_offset) + "," + to_string(y_offset);  //custom string to set the start point of the screen section
+            string dimension = to_string(width) + "x" + to_string(height);
+            av_dict_set(&videoOptions, "video_size", dimension.c_str(), 0);
+            value = avformat_open_input(&pAVFormatContext, url.c_str(), pAVInputFormat, &videoOptions);
+
+            if (value != 0) {
+                cerr << "Error in opening input device (video after pause)" << endl;
+                exit(-1);
+            }
+
+            value = avformat_find_stream_info(pAVFormatContext, nullptr);
+            if (value < 0) {
+                cerr << "Error in retrieving the stream info" << endl;
+                exit(-1);
+            }
+
+            VideoStreamIndx = -1;
+            for (int i = 0; i < pAVFormatContext->nb_streams; i++) {
+                if (pAVFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+                    VideoStreamIndx = i;
+                    break;
+                }
+            }
+            if (VideoStreamIndx == -1) {
+                cerr << "Error: unable to find video stream index" << endl;
+                exit(-2);
+            }
+
+            pAVCodecContext = pAVFormatContext->streams[VideoStreamIndx]->codec;
+
+            pAVCodec = avcodec_find_decoder(pAVCodecContext->codec_id/*params->codec_id*/);
+            if (pAVCodec == nullptr) {
+                cerr << "Error: unable to find decoder video" << endl;
+                exit(-1);
+            }
+
+            if (avcodec_open2(pAVCodecContext, pAVCodec, nullptr) < 0) {
+                cerr << "Could not open codec" << endl;
+                exit(-1);
+            }
+
+            swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, outVideoCodecContext->pix_fmt, SWS_BICUBIC,
+                nullptr, nullptr, nullptr);
+#endif
+            endPause = false;
+            time(&stopPause);
+            pauseTime = difftime(stopPause, startPause);
+            startSeconds += pauseTime;
+
+        }
+
+        if (stopCapture) { //check if the capture has to stop
+            break;
+        }
+        ul.unlock();
+
+        if (av_read_frame(pAVFormatContext, pAVPacket) >= 0 && pAVPacket->stream_index == VideoStreamIndx) {
+            av_packet_rescale_ts(pAVPacket, pAVFormatContext->streams[VideoStreamIndx]->time_base, pAVCodecContext->time_base);
+            value = avcodec_decode_video2(pAVCodecContext, pAVFrame, &frameFinished, pAVPacket);
+            if (value < 0) {
+                cout << "Unable to decode video" << endl;
+            }
+
+            pAVFrame->pts = numFrame;
+
+            if (frameFinished) { //frame successfully decoded
+
+                numFrame++;
+
+                av_init_packet(&outPacket);
+                outPacket.data = nullptr;
+                outPacket.size = 0;
+
+                if (outAVFormatContext->streams[outVideoStreamIndex]->start_time <= 0) {
+                    outAVFormatContext->streams[outVideoStreamIndex]->start_time = pAVFrame->pts;
+                }
+
+                //disable warning on the console
+                outFrame->width = outVideoCodecContext->width;
+                outFrame->height = outVideoCodecContext->height;
+                outFrame->format = outVideoCodecContext->pix_fmt;
+
+                outFrame->pts = pAVFrame->pts;
+                sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
+
+                avcodec_encode_video2(outVideoCodecContext, &outPacket, outFrame, &gotPicture);
+
+                if (gotPicture) {
+
+
+                    av_packet_rescale_ts(&outPacket, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
+
+
+                    time_t timer;
+                    double seconds;
+
+                    mu.lock();
+                    if (!activeMenu) {
+                        disabledMenu = false;
+                        time(&timer);
+                        seconds = difftime(timer, 0) - startSeconds;
+                        int h = (int)(seconds / 3600);
+                        int m = (int)(seconds / 60) % 60;
+                        int s = (int)(seconds) % 60;
+                        if ((seconds - precSeconds) >= 1) {
+                            std::cout << "\r" << std::setw(2) << std::setfill('0') << h << ':'
+                                << std::setw(2) << std::setfill('0') << m << ':'
+                                << std::setw(2) << std::setfill('0') << s << std::flush;
+                            precSeconds = seconds;
+                        }
+
+                    }
+                    else {
+                        disabledMenu = true;
+
+                    }
+                    mu.unlock();
+
+                    write_lock.lock();
+
+
+
+
+
+
+                    if (av_write_frame(outAVFormatContext, &outPacket) != 0) {
+                        cerr << "Error in writing video frame" << endl;
+                    }
+                    write_lock.unlock();
+                    av_packet_unref(&outPacket);
+                }
+                gotPicture = 0;
+                av_packet_unref(&outPacket);
+                av_free_packet(pAVPacket);  //avoid memory saturation
+            }
+            frameFinished = 0;
+        }
+    }
+
+
+
+
+    av_free(videoOutBuff);
+
+    return 0;
+}
+
+/*==========================================  AUDIO  ============================*/
+
+//open audio device
+int ScreenRecorder::openAudioDevice() throw() {
+    audioOptions = nullptr;
+    inAudioFormatContext = nullptr;
+
+    inAudioFormatContext = avformat_alloc_context();
+    value = av_dict_set(&audioOptions, "sample_rate", "44100", 0);
+    if (value < 0) {
+
+        throw error("Error: cannot set audio sample rate");
+    }
+    value = av_dict_set(&audioOptions, "async", "25", 0);
+    if (value < 0) {
+
+        throw error("Error: cannot set audio sample rate");
+    }
+
+#if defined linux
+    audioInputFormat = av_find_input_format("alsa");
+    value = avformat_open_input(&inAudioFormatContext, "hw:0", audioInputFormat, &audioOptions);
+
+    if (value != 0) {
+
+        throw error("Error in opening input device (audio)");
+    }
+#endif
+
+#if defined _WIN32
+    show_dshow_device();
+    cout << "\nPlease select the audio device among those listed before: ";
+    getchar();
+    getline(cin, deviceName);
+    deviceName = "audio=" + deviceName;
+
+    audioInputFormat = av_find_input_format("dshow");
+    value = avformat_open_input(&inAudioFormatContext, deviceName.c_str(), audioInputFormat, &audioOptions);
+
+    if (value != 0) {
+
+        throw error("Error in opening input device (audio)");
+    }
+#endif
+
+#if defined __APPLE__
+    audioInputFormat = av_find_input_format("avfoundation");
+    value = avformat_open_input(&inAudioFormatContext, "none:0", audioInputFormat, &audioOptions);
+#endif
+
+    value = avformat_find_stream_info(inAudioFormatContext, nullptr);
+    if (value != 0) {
+
+        throw error("Error: cannot find the audio stream information");
+    }
+
+    audioStreamIndx = -1;
+    for (int i = 0; i < inAudioFormatContext->nb_streams; i++) {
+        if (inAudioFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            audioStreamIndx = i;
+            break;
+        }
+    }
+    if (audioStreamIndx == -1) {
+
+        throw error("Error: unable to find audio stream index");
+    }
+}
+
+//find information for audio stream
+//called by initOutputFile()
+void ScreenRecorder::generateAudioStream() throw() {
+
     AVCodecParameters* params = inAudioFormatContext->streams[audioStreamIndx]->codecpar;
     inAudioCodec = avcodec_find_decoder(params->codec_id);
     if (inAudioCodec == nullptr) {
-        cerr << "Error: cannot find the audio decoder" << endl;
-        exit(-1);
+
+        throw error("Error: cannot find the audio decoder");
     }
 
     inAudioCodecContext = avcodec_alloc_context3(inAudioCodec);
     if (avcodec_parameters_to_context(inAudioCodecContext, params) < 0) {
-        cout << "Cannot create codec context for audio input" << endl;
+
+        throw error("Cannot create codec context for audio input");
     }
 
     value = avcodec_open2(inAudioCodecContext, inAudioCodec, nullptr);
     if (value < 0) {
-        cerr << "Error: cannot open the input audio codec" << endl;
-        exit(-1);
+
+        throw error("Error: cannot open the input audio codec");
     }
 
     //Generate audio stream
@@ -584,20 +825,20 @@ void ScreenRecorder::generateAudioStream() {
 
     AVStream* audio_st = avformat_new_stream(outAVFormatContext, nullptr);
     if (audio_st == nullptr) {
-        cerr << "Error: cannot create audio stream" << endl;
-        exit(1);
+
+        throw error("Error: cannot create audio stream");
     }
 
     outAudioCodec = avcodec_find_encoder(AV_CODEC_ID_AAC);
     if (outAudioCodec == nullptr) {
-        cerr << "Error: cannot find requested encoder" << endl;
-        exit(1);
+
+        throw error("Error: cannot find requested encoder");
     }
 
     outAudioCodecContext = avcodec_alloc_context3(outAudioCodec);
     if (outAudioCodecContext == nullptr) {
-        cerr << "Error: cannot create related VideoCodecContext" << endl;
-        exit(1);
+
+        throw error("Error: cannot create related VideoCodecContext");
     }
 
     if ((outAudioCodec)->supported_samplerates) {
@@ -621,8 +862,8 @@ void ScreenRecorder::generateAudioStream() {
     }
 
     if (avcodec_open2(outAudioCodecContext, outAudioCodec, nullptr) < 0) {
-        cerr << "error in opening the avcodec" << endl;
-        exit(1);
+
+        throw error("error in opening the avcodec");
     }
 
     //find a free stream index
@@ -633,8 +874,8 @@ void ScreenRecorder::generateAudioStream() {
         }
     }
     if (outAudioStreamIndex < 0) {
-        cerr << "Error: cannot find a free stream for audio on the output" << endl;
-        exit(1);
+
+        throw error("Error: cannot find a free stream for audio on the output");
     }
 
     avcodec_parameters_from_context(outAVFormatContext->streams[outAudioStreamIndex]->codecpar, outAudioCodecContext);
@@ -667,10 +908,8 @@ int ScreenRecorder::add_samples_to_fifo(uint8_t** converted_input_samples, const
     return 0;
 }
 
-int ScreenRecorder::initConvertedSamples(uint8_t*** converted_input_samples,
-    AVCodecContext* output_codec_context,
-    int frame_size) {
-    int error;
+int ScreenRecorder::initConvertedSamples(uint8_t*** converted_input_samples, AVCodecContext* output_codec_context, int frame_size) {
+    int _error;
     /* Allocate as many pointers as there are audio channels.
      * Each pointer will later point to the audio samples of the corresponding
      * channels (although it may be NULL for interleaved formats).
@@ -687,12 +926,13 @@ int ScreenRecorder::initConvertedSamples(uint8_t*** converted_input_samples,
         frame_size,
         output_codec_context->sample_fmt, 0) < 0) {
 
-        exit(1);
+
+        throw error("Errorr: could not allocate memeory for samples in all channels (audio)");
     }
     return 0;
 }
 
-static int64_t pts = 0;
+//executed in a second thread to record audio
 void ScreenRecorder::captureAudio() {
     int ret;
     AVPacket* inPacket, * outPacket;
@@ -708,6 +948,7 @@ void ScreenRecorder::captureAudio() {
     if (!inPacket) {
         cerr << "Cannot allocate an AVPacket for encoded video" << endl;
         exit(1);
+        //throw error("Cannot allocate an AVPacket for encoded video");
     }
     av_init_packet(inPacket);
 
@@ -716,18 +957,21 @@ void ScreenRecorder::captureAudio() {
     if (!rawFrame) {
         cerr << "Cannot allocate an AVPacket for encoded video" << endl;
         exit(1);
+        //throw error("Cannot allocate an AVPacket for encoded video");
     }
 
     scaledFrame = av_frame_alloc();
     if (!scaledFrame) {
         cerr << "Cannot allocate an AVPacket for encoded video" << endl;
         exit(1);
+        //throw error("Cannot allocate an AVPacket for encoded video");
     }
 
     outPacket = (AVPacket*)av_malloc(sizeof(AVPacket));
     if (!outPacket) {
         cerr << "Cannot allocate an AVPacket for encoded video" << endl;
         exit(1);
+        //throw error("Cannot allocate an AVPacket for encoded video");
     }
 
     //init the resampler
@@ -744,35 +988,27 @@ void ScreenRecorder::captureAudio() {
     if (!resampleContext) {
         cerr << "Cannot allocate the resample context" << endl;
         exit(1);
+        //throw error("Cannot allocate the resample context");
     }
     if ((swr_init(resampleContext)) < 0) {
         fprintf(stderr, "Could not open resample context\n");
         swr_free(&resampleContext);
         exit(1);
+        //throw error("Could not open resample context");
     }
 
-    //int frameFinished, gotFrame;
 
-    //cout << "[AudioThread] thread started!" << endl;
 
     while (true) {
         unique_lock<mutex> ul(mu);
-        //ul.unlock();
-        //if(ii++ == noFrames)
-        //  break;
-
-        //ul.lock();
         if (pauseCapture) {
-            //cout << "Pause audio" << endl;
             endPause = true;
 #if defined _WIN32
             avformat_close_input(&inAudioFormatContext);
-            if (inAudioFormatContext == nullptr) {
-                cout << "inAudioFormatContext close successfully" << endl;
-            }
-            else {
+            if (inAudioFormatContext != nullptr) {
                 cerr << "Error: unable to close the inAudioFormatContext" << endl;
                 exit(-1);
+                //throw error("Error: unable to close the inAudioFormatContext (before pause)");
             }
 #endif
         }
@@ -782,18 +1018,18 @@ void ScreenRecorder::captureAudio() {
             endPause = false;
 #if defined _WIN32
             value = avformat_open_input(&inAudioFormatContext, deviceName.c_str(), audioInputFormat, &audioOptions);
-            //audioInputFormat = av_find_input_format("pulse");
-            //value = avformat_open_input(&inAudioFormatContext, "default", audioInputFormat, &audioOptions);
+
             if (value != 0) {
                 cerr << "Error in opening input device (audio)" << endl;
                 exit(-1);
-                //throw error("Error in opening input device");
+                //throw error("Error in opening input device (audio after pause)");
             }
 
             value = avformat_find_stream_info(inAudioFormatContext, nullptr);
             if (value != 0) {
                 cerr << "Error: cannot find the audio stream information" << endl;
                 exit(-1);
+                //throw error("Error: cannot find the audio stream information");
             }
 
             audioStreamIndx = -1;
@@ -806,6 +1042,7 @@ void ScreenRecorder::captureAudio() {
             if (audioStreamIndx == -1) {
                 cerr << "Error: unable to find audio stream index" << endl;
                 exit(-2);
+                //throw error("Error: unable to find audio stream index");
             }
 #endif
         }
@@ -822,35 +1059,7 @@ void ScreenRecorder::captureAudio() {
                 cout << "Cannot decode current audio packet " << ret << endl;
                 continue;
             }
-            /*ret = avcodec_decode_audio4(inAudioCodecContext, rawFrame, &frameFinished, inPacket);
-            if(ret < 0){
-                cout << "Error: unable to decode audio" << endl;
-            }
-            if(frameFinished){
-                //av_packet_rescale_ts(outPacket,  inAudioFormatContext->streams[audioStreamIndx]->time_base, inAudioCodecContext->time_base);
-                av_init_packet(outPacket);
-                outPacket->data = nullptr;
-                outPacket->size = 0;
-                scaledFrame->nb_samples     = outAudioCodecContext->frame_size;
-                scaledFrame->channel_layout = outAudioCodecContext->channel_layout;
-                scaledFrame->format         = outAudioCodecContext->sample_fmt;
-                scaledFrame->sample_rate    = outAudioCodecContext->sample_rate;
-                avcodec_encode_audio2(outAVCodecContext, outPacket, scaledFrame, &gotFrame);
-                if(gotFrame){
-                    if(outPacket->pts != AV_NOPTS_VALUE){
-                        outPacket->pts = av_rescale_q(outPacket->pts, audioSt->codec->time_base, audioSt->time_base);
-                    }
-                    if(outPacket->dts != AV_NOPTS_VALUE){
-                        outPacket->dts = av_rescale_q(outPacket->dts, audioSt->codec->time_base, audioSt->time_base);
-                    }
-                    if(av_write_frame(outAVFormatContext, outPacket) != 0){
-                        cerr << "Error in writing audio frame" <<endl;
-                    }
-                    av_packet_unref(outPacket);
-                }
-                av_packet_unref(outPacket);
-                av_free_packet(inPacket);
-            }*/
+
             while (ret >= 0) {
                 ret = avcodec_receive_frame(inAudioCodecContext, rawFrame);
                 if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
@@ -858,6 +1067,7 @@ void ScreenRecorder::captureAudio() {
                 else if (ret < 0) {
                     cerr << "Error during decoding" << endl;
                     exit(1);
+                    //throw error("Error during decoding");
                 }
                 if (outAVFormatContext->streams[outAudioStreamIndex]->start_time <= 0) {
                     outAVFormatContext->streams[outAudioStreamIndex]->start_time = rawFrame->pts;
@@ -868,13 +1078,6 @@ void ScreenRecorder::captureAudio() {
                     resampledData, rawFrame->nb_samples,
                     (const uint8_t**)rawFrame->extended_data, rawFrame->nb_samples);
 
-                /*if(endPause){
-                    cout << "end pause" << endl;
-                    cout << av_audio_fifo_size(fifo) << endl;
-                    pts += outAudioCodecContext->frame_size;
-                    endPause = false;
-                    break;
-                }*/
 
                 add_samples_to_fifo(resampledData, rawFrame->nb_samples);
 
@@ -889,14 +1092,14 @@ void ScreenRecorder::captureAudio() {
                 if (!scaledFrame) {
                     cerr << "Cannot allocate an AVPacket for encoded video" << endl;
                     exit(1);
+                    //throw error("Cannot allocate an AVPacket for encoded video");
                 }
 
                 scaledFrame->nb_samples = outAudioCodecContext->frame_size;
                 scaledFrame->channel_layout = outAudioCodecContext->channel_layout;
                 scaledFrame->format = outAudioCodecContext->sample_fmt;
                 scaledFrame->sample_rate = outAudioCodecContext->sample_rate;
-                //scaledFrame->best_effort_timestamp = rawFrame->best_effort_timestamp;
-                //scaledFrame->pts = rawFrame->pts;
+
                 av_frame_get_buffer(scaledFrame, 0);
 
                 while (av_audio_fifo_size(fifo) >= outAudioCodecContext->frame_size) {
@@ -905,8 +1108,9 @@ void ScreenRecorder::captureAudio() {
                     scaledFrame->pts = pts;
                     pts += scaledFrame->nb_samples;
                     if (avcodec_send_frame(outAudioCodecContext, scaledFrame) < 0) {
-                        cout << "Cannot encode current audio packet " << endl;
+                        cerr << "Cannot encode current audio packet " << endl;
                         exit(1);
+                        //throw error("Cannot encode current audio packet");
                     }
                     while (ret >= 0) {
                         ret = avcodec_receive_packet(outAudioCodecContext, outPacket);
@@ -915,6 +1119,7 @@ void ScreenRecorder::captureAudio() {
                         else if (ret < 0) {
                             cerr << "Error during encoding" << endl;
                             exit(1);
+                            //throw error("Error during encoding");
                         }
                         //outPacket ready
                         av_packet_rescale_ts(outPacket, outAudioCodecContext->time_base, outAVFormatContext->streams[outAudioStreamIndex]->time_base);
@@ -934,306 +1139,8 @@ void ScreenRecorder::captureAudio() {
                 }// got_picture
                 av_frame_free(&scaledFrame);
                 av_packet_unref(outPacket);
-                //av_freep(&resampledData[0]);
-                // free(resampledData);
+
             }
         }
     }
-    /*value = av_write_trailer(outAVFormatContext);
-    if(value != 0){
-        cerr << "Error in writing audio trailer" << endl;
-        exit(-1);
-    }
-    av_free(audioOutBuff);*/
-}
-
-static int64_t ptsVideo = 0;
-
-int ScreenRecorder::captureVideoFrames() {
-    int64_t pts = 0;
-    int flag;
-    int frameFinished = 0;
-    bool endPause = false;
-    int numPause = 0;
-
-    int64_t numFrame = 0;
-#if defined _WIN32
-    ofstream outFile{ "..\\media\\log.txt", ios::out };
-#else
-    ofstream outFile{ "media/log.txt", ios::out };
-#endif
-    int frameIndex = 0;
-    value = 0;
-
-    pAVPacket = (AVPacket*)av_malloc(sizeof(AVPacket));
-    if (pAVPacket == nullptr) {
-        cerr << "Error in allocating AVPacket" << endl;
-        exit(-1);
-    }
-
-    pAVFrame = av_frame_alloc();
-    if (pAVFrame == nullptr) {
-        cerr << "Error: unable to alloc the AVFrame resources" << endl;
-        exit(-1);
-    }
-    //pAVFrame->height = 1080;
-    //pAVFrame->width = 1920;
-
-    outFrame = av_frame_alloc();
-    if (outFrame == nullptr) {
-        cerr << "Error: unable to alloc the AVFrame resources for out frame" << endl;
-        exit(-1);
-    }
-
-    int videoOutBuffSize;
-    int nBytes = av_image_get_buffer_size(outVideoCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, 32);
-    uint8_t* videoOutBuff = (uint8_t*)av_malloc(nBytes);
-
-    if (videoOutBuff == nullptr) {
-        cerr << "Error: unable to allocate memory" << endl;
-        exit(-1);
-    }
-
-    value = av_image_fill_arrays(outFrame->data, outFrame->linesize, videoOutBuff, AV_PIX_FMT_YUV420P, outVideoCodecContext->width, outVideoCodecContext->height, 1);
-    if (value < 0) {
-        cerr << "Error in filling image array" << endl;
-    }
-
-    SwsContext* swsCtx_;
-
-    if (avcodec_open2(pAVCodecContext, pAVCodec, nullptr) < 0) {
-        cerr << "Could not open codec" << endl;
-        exit(-1);
-    }
-
-
-
-    swsCtx_ = sws_getContext(pAVCodecContext->width, pAVCodecContext->height, pAVCodecContext->pix_fmt, outVideoCodecContext->width, outVideoCodecContext->height, outVideoCodecContext->pix_fmt, SWS_BICUBIC,
-        nullptr, nullptr, nullptr);
-
-
-    cout << "pVCodec Context width: height " << pAVCodecContext->width << " " << pAVCodecContext->height << endl;
-    cout << "outVideoCodecContext width: height " << outVideoCodecContext->width << " " << outVideoCodecContext->height << endl;
-    AVPacket outPacket;
-    int gotPicture;
-
-    double pauseTime, startSeconds, precSeconds=0;
-    time_t startPause, stopPause;
-    time_t startTime;
-    time(&startTime);
-
-    startSeconds = difftime(startTime, 0);
-
-    cout << endl;
-
-    while (true) {
-        //ul.unlock();
-        //if(ii++ == noFrames)
-        //  break;
-
-        //ul.lock();
-        unique_lock<mutex> ul(mu);
-        if (pauseCapture) {
-
-
-
-            endPause = true;
-            time(&startPause);
-            numPause++;
-            /*avformat_close_input(&pAVFormatContext);
-            if(pAVFormatContext == nullptr){
-                cout << "File close successfully" << endl;
-            }
-            else{
-                cerr << "Error: unable to close the file" << endl;
-                exit(-1);
-                //throw "Error: unable to close the file";
-            }
-            avformat_free_context(pAVFormatContext);
-            if(pAVFormatContext == nullptr){
-                cout << "VideoFormat freed successfully" << endl;
-            }
-            else{
-                cerr << "Error: unable to free VideoFormatContext" << endl;
-                exit(-1);
-            }*/
-            ////////////////////////////////////////////////////////////////////
-        }
-        cv.wait(ul, [this]() { return !pauseCapture; });   //pause capture (not busy waiting)
-        if (endPause) {
-            endPause = false;
-            time(&stopPause);
-            pauseTime = difftime(stopPause, startPause);
-            startSeconds += pauseTime;
-            ///////////////////////////////////////////////////////////////////
-
-            ////////////////////////////////////////////////////////////////////
-        }
-
-        if (stopCapture) { //check if the capture has to stop
-            break;
-        }
-        ul.unlock();
-
-        if (av_read_frame(pAVFormatContext, pAVPacket) >= 0 && pAVPacket->stream_index == VideoStreamIndx) {
-            av_packet_rescale_ts(pAVPacket, pAVFormatContext->streams[VideoStreamIndx]->time_base, pAVCodecContext->time_base);
-            /////////////////////////////////////////////////////////////////////
-            /*if ((value = avcodec_send_packet(pAVCodecContext, pAVPacket)) < 0) {
-                cout << "Cannot decode current video packet" << endl;
-                continue;
-            }
-            while(value >= 0){
-                value = avcodec_receive_frame(pAVCodecContext, pAVFrame);
-                if(value == AVERROR(EAGAIN) || value == AVERROR_EOF){
-                    break;
-                }
-                else if(value < 0){
-                    cerr << "Error during decoding" << endl;
-                    exit(-1);
-                }
-                if(outAVFormatContext->streams[outVideoStreamIndex]->start_time <= 0){
-                    outAVFormatContext->streams[outVideoStreamIndex]->start_time = pAVFrame->pts;
-                }
-                av_init_packet(&outPacket);
-                outPacket.data = nullptr;
-                outPacket.size = 0;
-                outFrame->width = outVideoCodecContext->width;
-                outFrame->height = outVideoCodecContext->height;
-                outFrame->format = outVideoCodecContext->pix_fmt;
-                outFrame->pts = pAVFrame->pts;
-                outFrame->pkt_dts = pAVFrame->pkt_dts;
-                outFrame->best_effort_timestamp = pAVFrame->best_effort_timestamp;
-                sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
-                if(avcodec_send_frame(outVideoCodecContext, outFrame) < 0){
-                    cerr << "cannot encode current video packet" << endl;
-                    exit(-1);
-                }
-                while(value >= 0){
-                    value = avcodec_receive_packet(outVideoCodecContext, &outPacket);
-                    if(value == AVERROR(EAGAIN) || value == AVERROR_EOF){
-                        break;
-                    }
-                    else if(value < 0){
-                        cerr << "Error during encoding" << endl;
-                        exit(-1);
-                    }
-                    if(outPacket.pts != AV_NOPTS_VALUE){
-                        outPacket.pts = av_rescale_q(outPacket.pts, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
-                    }
-                    if(outPacket.dts != AV_NOPTS_VALUE){
-                        outPacket.dts = av_rescale_q(outPacket.dts, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
-                    }
-                    outPacket.stream_index = outVideoStreamIndex;
-                    write_lock.lock();
-                    if(av_write_frame(outAVFormatContext, &outPacket) != 0){
-                        cerr << "Error in writing video frame" << endl;
-                    }
-                    write_lock.unlock();
-                    av_packet_unref(&outPacket);
-                }
-                av_packet_unref(&outPacket);
-                av_free_packet(pAVPacket);
-            }*/
-            //////////////////////////////////////////////////////////////////////
-            value = avcodec_decode_video2(pAVCodecContext, pAVFrame, &frameFinished, pAVPacket);
-            if (value < 0) {
-                cout << "Unable to decode video" << endl;
-            }
-
-            pAVFrame->pts = numFrame;
-
-            if (frameFinished) { //frame successfully decoded
-
-                numFrame++;
-
-                //sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
-                av_init_packet(&outPacket);
-                outPacket.data = nullptr;
-                outPacket.size = 0;
-
-                if (outAVFormatContext->streams[outVideoStreamIndex]->start_time <= 0) {
-                    outAVFormatContext->streams[outVideoStreamIndex]->start_time = pAVFrame->pts;
-                }
-
-                //disable warning on the console
-                outFrame->width = outVideoCodecContext->width;
-                outFrame->height = outVideoCodecContext->height;
-                outFrame->format = outVideoCodecContext->pix_fmt;
-
-                outFrame->pts = pAVFrame->pts;
-                sws_scale(swsCtx_, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContext->height, outFrame->data, outFrame->linesize);
-
-                avcodec_encode_video2(outVideoCodecContext, &outPacket, outFrame, &gotPicture);
-
-                if (gotPicture) {
-                    /*
-                    if (outPacket.pts != AV_NOPTS_VALUE) {
-                        outPacket.pts = av_rescale_q(outPacket.pts, outVideoCodecContext->time_base, videoSt->time_base);
-                    }
-                    if (outPacket.dts != AV_NOPTS_VALUE) {
-                        outPacket.dts = av_rescale_q(outPacket.dts, outVideoCodecContext->time_base, videoSt->time_base);
-                    }
-                    */
-
-                    //cout << "Write frame " << j++ << " (size = " << outPacket.size / 1000 << ")" << endl;
-                    //cout << "(size = " << outPacket.size << ")" << endl;
-
-                    av_packet_rescale_ts(&outPacket, outVideoCodecContext->time_base, outAVFormatContext->streams[outVideoStreamIndex]->time_base);
-                    //outPacket.stream_index = outVideoStreamIndex;
-
-                    outFile << "outPacket->duration: " << outPacket.duration << ", " << "pAVPacket->duration: " << pAVPacket->duration << endl;
-                    outFile << "outPacket->pts: " << outPacket.pts << ", " << "pAVPacket->pts: " << pAVPacket->pts << endl;
-                    outFile << "outPacket.dts: " << outPacket.dts << ", " << "pAVPacket->dts: " << pAVPacket->dts << endl;
-
-                    time_t timer;
-                    double seconds;
-
-                    mu.lock();
-                    if (!activeMenu) {
-                        disabledMenu = false;
-                        time(&timer);
-                        seconds = difftime(timer, 0) - startSeconds;
-                        int h = (int)(seconds / 3600);
-                        int m = (int)(seconds / 60) % 60;
-                        int s = (int)(seconds) % 60;
-                        if ((seconds - precSeconds) >= 1) {
-                            std::cout << "\r" << std::setw(2) << std::setfill('0') << h << ':'
-                                << std::setw(2) << std::setfill('0') << m << ':'
-                                << std::setw(2) << std::setfill('0') << s << std::flush;
-                            precSeconds = seconds;
-                        }
-
-                    }
-                    else {
-                        disabledMenu = true;
-                        //std::cout << "Fine dell'attesa" << std::endl;
-                    }
-                    mu.unlock();
-
-                    write_lock.lock();
-
-
-
-
-
-
-                    if (av_write_frame(outAVFormatContext, &outPacket) != 0) {
-                        cerr << "Error in writing video frame" << endl;
-                    }
-                    write_lock.unlock();
-                    av_packet_unref(&outPacket);
-                }
-                gotPicture = 0;
-                av_packet_unref(&outPacket);
-                av_free_packet(pAVPacket);  //avoid memory saturation
-            }
-            frameFinished = 0;
-        }
-    }
-
-    outFile.close();
-
-    av_free(videoOutBuff);
-
-    return 0;
 }
