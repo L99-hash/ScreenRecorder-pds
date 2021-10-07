@@ -1,6 +1,6 @@
 # ScreenRecorder-pds
 
-Screen recorder built using FFmpeg library. Project realized for System and Device Programming course of Politecnico di Torino
+Screen recorder built using FFmpeg 4.1 library. Project realized for System and Device Programming course of Politecnico di Torino
 
 # Linux
 Dependencies:
