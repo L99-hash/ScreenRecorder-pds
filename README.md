@@ -13,15 +13,11 @@ Dependencies:
 - libswresample
 - libx11
 
-Before build the preject, perform: 
-- ```sudo apt-get update```
-- ```sudo apt-get install libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libavdevice-dev libswscale-dev libswresample-dev libx11-dev cmake pkg-config -y```
+Before build the preject, perform (check that ```install_dependencies.sh``` and ```build.sh``` have execution permission): 
+- ```sudo ./install_dependencies.sh```
 
 To build and execute the project:
-- move in the project directory
-- ```cmake .```
-- ```make```
-- ```./ScreenRecorder_pds```
+- ```./build.sh```
 
 ### Last test on linux with versions:
 
