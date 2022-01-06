@@ -184,6 +184,11 @@ void ScreenRecorder::setOutputDir(const char* dir) {
 
 //overide screen dimension to record (default->desktop dimension)
 void ScreenRecorder::setScreenDimension(int width, int height) {
+    if(width % 2 != 0)
+        width -= 1;
+    if(height % 2 !=0)
+        height -= 1;
+
     this->width = width;
     this->height = height;
 

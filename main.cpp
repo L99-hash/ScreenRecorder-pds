@@ -52,9 +52,10 @@ Command stringToInt(std::string cmd){
 void showCommands(){
     std::cout << "Commands: " << std::endl;
     std::cout << "start --> begin registration" << std::endl;
+    std::cout << "audio --> enable audio registration" << std::endl;
     std::cout << "pause --> pause registration" << std::endl;
     std::cout << "resume --> resume registration after pause" << std::endl;
-    std::cout << "stop --> stop registration and exit" << std::endl;
+    std::cout << "stop --> stop registration and/or exit" << std::endl;
     std::cout << "dim --> set screen section to record" << std::endl;
     std::cout << "offset --> set top left point of screen section to record" << std::endl;
     std::cout << "out --> set output direcotry (relative or absolute path)" << std::endl;
