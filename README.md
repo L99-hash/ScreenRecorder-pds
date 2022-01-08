@@ -18,6 +18,7 @@ Before build the preject, perform (check that ```install_dependencies.sh``` and 
 
 To build and execute the project:
 - ```./build.sh```
+- ```./ScreenRecoder-pds```
 
 ### Last test on linux with versions:
 
