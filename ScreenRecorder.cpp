@@ -47,6 +47,8 @@ void getScreenResolution(int& width, int& height) {
     width = scrn->width;
     height = scrn->height;
 #endif
+    if(width%2 != 0) width-=1;
+    if(height%2 != 0) height-=1;
 }
 
 ScreenRecorder::ScreenRecorder() : pauseCapture(false), stopCapture(false), started(false), activeMenu(true), recordAudio(false), disabledMenu(false) {
