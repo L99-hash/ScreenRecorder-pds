@@ -9,7 +9,21 @@ echo
 echo "Start building the project..."
 echo
 
-cmake .
+echo "Creating the ./build directory..."
+echo
+
+mkdir build
+if [ $? -eq 0 ]
+then
+    echo "Created the ./build direcotory"
+else
+    echo "ERROR: cannot create the ./build direcotry"
+fi
+cmake -S . -B build
+
+echo "Moving to ./build direcotory"
+echo
+cd build
 make
 
 if [ $? -eq 0 ]
